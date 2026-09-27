@@ -217,9 +217,19 @@ async function sendN1(phone) {
 // ── A1 · Continue / Talk to a person ─────────────────────────────────────────
 async function handleA1(lead, conv, selectedId) {
   if (selectedId === 'a1_continue') {
-    // Ask company size first (its own step) so 500+ can skip straight to HOT
-    lead.flowStep = 'q1_sent';
+    // Send the qualification Flow (size + conditional situation/timeline/role in one form).
+    // 500+ hides the rest inside the Flow and we skip to HOT on submit. Buttons are the fallback.
+    let sentFlow = false;
+    try { sentFlow = await sendQualifyFlow(lead.phone, lead.name); }
+    catch (e) { logger.warn('Qualify flow send failed, falling back to buttons', { error: e.message }); }
     lead.invalidCount = 0;
+    if (sentFlow) {
+      lead.flowStep = 'qualify_sent';
+      setAwaiting(lead);
+      await lead.save();
+      return logOutbound(conv, lead.phone, '[qualification flow sent]');
+    }
+    lead.flowStep = 'q1_sent';
     setAwaiting(lead);
     await lead.save();
     await sendButtons(lead.phone, Q1_BODY, Q1_BUTTONS);
@@ -231,11 +241,20 @@ async function handleA1(lead, conv, selectedId) {
 
 // ── Qualification Flow submission (all 4 answers at once) ────────────────────
 async function handleQualifySubmission(lead, conv, resp) {
+  const sizes  = ['under_100', '100_500', '500_plus'];
   const sits   = ['exploring', 'first_eval', 'switching'];
   const times  = ['this_quarter', 'next_quarter', 'six_months'];
   const roles  = ['decision_maker', 'evaluating_team'];
 
-  // companySize was already captured at Q1 (before this flow); flow returns the rest
+  if (sizes.includes(resp.company_size)) lead.companySize = resp.company_size;
+  lead.invalidCount = 0;
+
+  // 500+ hid the rest of the questions inside the flow → skip straight to HOT
+  if (lead.companySize === '500_plus') {
+    await lead.save();
+    return goHot(lead, conv, 'Enterprise (500+) — skipped Q2-Q4');
+  }
+
   if (sits.includes(resp.situation))  lead.situation = resp.situation;
   if (times.includes(resp.timeline))  lead.timeline  = resp.timeline;
   if (roles.includes(resp.role))      lead.role      = resp.role;

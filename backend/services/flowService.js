@@ -143,7 +143,7 @@ export async function sendQualifyFlow(phone, name = '') {
     flowId,
     flowToken: `cloudswift_q_${phone}`,
     cta: 'Answer questions',
-    screen: 'SITUATION',
+    screen: 'SIZE',
     data: {},
     headerImageUrl: headerUrl || '',
     body: `Thanks${name ? ` ${name}` : ''} — just 4 quick questions so we can match you with the right specialist. Tap below 👇`,

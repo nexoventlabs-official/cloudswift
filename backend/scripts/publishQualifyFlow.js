@@ -51,6 +51,18 @@ async function run() {
     console.log('   -> flow id:', flowId);
   }
 
+  // This flow uses a server data endpoint (dynamic branching + 500+ early close).
+  // Set endpoint_uri to the deployed backend BEFORE publishing (Meta health-checks it).
+  const ENDPOINT_URI = process.env.WA_FLOW_ENDPOINT_URI
+    || `${(process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')}/api/whatsapp/flow-endpoint`;
+  console.log('1b) Setting endpoint_uri ->', ENDPOINT_URI);
+  try {
+    const epRes = await axios.post(`${GRAPH}/${flowId}`, { endpoint_uri: ENDPOINT_URI }, { headers: { ...auth, 'Content-Type': 'application/json' } });
+    console.log('   -> endpoint set:', JSON.stringify(epRes.data));
+  } catch (e) {
+    console.error('   endpoint_uri set FAILED:', e.response?.data ? JSON.stringify(e.response.data) : e.message);
+  }
+
   console.log('2) Uploading flow JSON asset ...');
   const form = new FormData();
   form.append('name', 'flow.json');
@@ -61,7 +73,7 @@ async function run() {
   console.log('   -> validation_errors:', vErrors.length ? JSON.stringify(vErrors, null, 2) : 'none (clean)');
   if (vErrors.length) { console.error('   Fix validation errors before publishing. Draft id:', flowId); process.exit(2); }
 
-  console.log('3) Publishing ...');
+  console.log('3) Publishing (Meta will health-check the endpoint) ...');
   const pubRes = await axios.post(`${GRAPH}/${flowId}/publish`, {}, { headers: auth });
   console.log('   -> publish:', JSON.stringify(pubRes.data));
 
