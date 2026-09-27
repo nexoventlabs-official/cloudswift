@@ -1,0 +1,88 @@
+{
+  "version": "6.3",
+  "routing_model": {
+    "CHOOSE_SERVICE": []
+  },
+  "screens": [
+    {
+      "id": "CHOOSE_SERVICE",
+      "title": "Choose service",
+      "terminal": true,
+      "success": true,
+      "data": {
+        "banner": {
+          "type": "string",
+          "__example__": "iVBORw0KGgo"
+        },
+        "has_banner": {
+          "type": "boolean",
+          "__example__": true
+        },
+        "heading": {
+          "type": "string",
+          "__example__": "Welcome to CloudSwift"
+        },
+        "subheading": {
+          "type": "string",
+          "__example__": "Select a service to get started:"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "image": { "type": "string" }
+            },
+            "required": ["id", "title"]
+          },
+          "__example__": [
+            { "id": "azure_migration", "title": "Azure migration", "description": "Move to or optimise Azure infrastructure", "image": "iVBORw0KGgo" },
+            { "id": "m365", "title": "Microsoft 365", "description": "Microsoft 365 / Dynamics 365 licensing & setup", "image": "iVBORw0KGgo" }
+          ]
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Image",
+            "src": "${data.banner}",
+            "width": 1000,
+            "height": 125,
+            "scale-type": "cover",
+            "alt-text": "CloudSwift",
+            "visible": "${data.has_banner}"
+          },
+          {
+            "type": "TextHeading",
+            "text": "${data.heading}"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "${data.subheading}"
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "name": "service",
+            "label": "Select a service",
+            "required": true,
+            "data-source": "${data.services}"
+          },
+          {
+            "type": "Footer",
+            "label": "Continue",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "service": "${form.service}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

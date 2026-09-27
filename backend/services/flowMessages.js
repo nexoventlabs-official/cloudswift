@@ -1,204 +1,305 @@
 /**
- * All WhatsApp message content for every flow step.
- * Loaded from DB Settings at runtime; these are the fallback defaults.
- * Use getSetting(key) to override from admin panel.
+ * All WhatsApp copy + button definitions for the CloudSwift lead flow.
+ * Flow map: ENTRY → A0 (service picker Flow) → A1 → Q1..Q4 → score → HOT/WARM/COLD → safety nets.
+ * Runtime overrides come from DB Settings via getSetting(key) in chatbot.js.
  */
 
-export const FLOW1_BODY = (name = '') =>
-  `Hi${name ? ` ${name}` : ''} — thanks for reaching out to CloudSwift.
+// ── A0 · Service picker (native WhatsApp Flow) ───────────────────────────────
+export const WELCOME_BODY = (name = '') =>
+  `Hi${name ? ` ${name}` : ''} 👋 Welcome to CloudSwift.
 
-Our team works with mid-market companies across India and the GCC on Azure infrastructure, Microsoft 365, and managed cloud.
+We help mid-market companies across India and the GCC with Azure, Microsoft 365 and managed cloud.
 
-To connect you with the right person — what's the main challenge you're trying to solve right now?`;
+Tap *Choose service* below and we'll connect you with the right specialist.`;
 
-export const FLOW1_BUTTONS = [
-  { id: 'topic_azure',   title: 'Azure migration' },
-  { id: 'topic_m365',    title: 'Microsoft 365' },
-  { id: 'topic_managed', title: 'Managed cloud' },
+// Service ids == Lead.topic values, so the Flow submission maps straight through.
+export const SERVICES = [
+  { id: 'azure_migration', title: 'Azure migration',      description: 'Move to or optimise Azure infrastructure', iconKey: 'icon_azure' },
+  { id: 'm365',            title: 'Microsoft 365',         description: 'Microsoft 365 / Dynamics 365 licensing & setup', iconKey: 'icon_m365' },
+  { id: 'managed_cloud',   title: 'Managed cloud',         description: 'Ongoing managed cloud support', iconKey: 'icon_managed' },
+  { id: 'security',        title: 'Security & compliance', description: 'Cloud security posture & compliance', iconKey: 'icon_security' },
+  { id: 'other',           title: 'Something else',        description: 'Another enquiry', iconKey: '' },
 ];
 
-// Flow 1 has 5 options — use a list message since > 3 buttons
-export const FLOW1_LIST_SECTIONS = [
-  {
-    title: 'Select your main challenge',
-    rows: [
-      { id: 'topic_azure',    title: 'Azure migration or infrastructure', description: 'Move to or optimise Azure' },
-      { id: 'topic_m365',     title: 'Microsoft 365 / Dynamics 365',       description: 'Licensing, setup, migration' },
-      { id: 'topic_managed',  title: 'Managed cloud support',               description: 'Ongoing managed services' },
-      { id: 'topic_security', title: 'Security or compliance',              description: 'Cloud security posture' },
-      { id: 'topic_other',    title: 'Something else',                      description: 'Other enquiry' },
-    ],
-  },
+export const VALID_TOPICS = SERVICES.map((s) => s.id);
+
+// ── A1 · Continue or talk to a person ────────────────────────────────────────
+export const A1_BODY = `Great choice. I can ask a few quick questions to match you with the right specialist — or connect you to a person straight away.`;
+export const A1_BUTTONS = [
+  { id: 'a1_continue',    title: 'Continue' },
+  { id: 'a1_talk_person', title: 'Talk to a person' },
 ];
 
-export const FLOW2_Q1_BODY = `Got it. And what size is your company — roughly how many employees?`;
-export const FLOW2_Q1_BUTTONS = [
+// ── Q1 · Company size ────────────────────────────────────────────────────────
+export const Q1_BODY = `First — roughly how many employees does your company have?`;
+export const Q1_BUTTONS = [
   { id: 'size_under_100', title: 'Under 100' },
-  { id: 'size_100_500',   title: '100–500' },
-  { id: 'size_500_2000',  title: '500–2,000' },
+  { id: 'size_100_499',   title: '100–499' },
+  { id: 'size_500_plus',  title: '500+' },
 ];
-export const FLOW2_Q1_EXTRA = { id: 'size_2000_plus', title: '2,000+' };
+export const SIZE_MAP = {
+  size_under_100: 'under_100',
+  size_100_499:   '100_500',
+  size_500_plus:  '500_plus',
+};
 
-export const FLOW2_Q2_BODY = `Thanks. Are you currently working with any cloud vendor or MSP?`;
-export const FLOW2_Q2_BUTTONS = [
-  { id: 'sit_not_working', title: 'Have one, not working' },
-  { id: 'sit_first_eval',  title: 'Evaluating for first time' },
-  { id: 'sit_switching',   title: 'Looking to switch' },
+// ── Q2 · Situation ───────────────────────────────────────────────────────────
+export const Q2_BODY = `Where are you right now with cloud?`;
+export const Q2_BUTTONS = [
+  { id: 'sit_researching', title: 'Researching' },
+  { id: 'sit_first_eval',  title: 'First evaluation' },
+  { id: 'sit_switching',   title: 'Switching / problem' },
 ];
+export const SITUATION_MAP = {
+  sit_researching: 'exploring',
+  sit_first_eval:  'first_eval',
+  sit_switching:   'switching',
+};
 
-export const FLOW2_Q3_BODY = `One last thing — what's your timeline for making a decision?`;
-export const FLOW2_Q3_BUTTONS = [
-  { id: 'tl_this_quarter', title: 'This quarter — fast' },
+// ── Q3 · Timeline ────────────────────────────────────────────────────────────
+export const Q3_BODY = `What's your timeline for a decision?`;
+export const Q3_BUTTONS = [
+  { id: 'tl_this_quarter', title: 'This quarter' },
   { id: 'tl_next_quarter', title: 'Next quarter' },
-  { id: 'tl_six_months',   title: 'Within 6 months' },
+  { id: 'tl_six_months',   title: '6+ months' },
+];
+export const TIMELINE_MAP = {
+  tl_this_quarter: 'this_quarter',
+  tl_next_quarter: 'next_quarter',
+  tl_six_months:   'six_months',
+};
+
+// ── Q4 · Role ────────────────────────────────────────────────────────────────
+export const Q4_BODY = `Last one — what's your role in this decision?`;
+export const Q4_BUTTONS = [
+  { id: 'role_dm',   title: 'Decision-maker' },
+  { id: 'role_team', title: 'Evaluating for team' },
+];
+export const ROLE_MAP = {
+  role_dm:   'decision_maker',
+  role_team: 'evaluating_team',
+};
+
+// ── HOT path ─────────────────────────────────────────────────────────────────
+export const A_H_BODY = `Perfect — this is exactly what our solutions team handles. Let me get you to the right person quickly.`;
+
+export const H1_BODY = `Could you share your *name* and *company*? You can type it in one line, e.g. "Ravi, Acme Corp".`;
+
+export const H2_BODY = (name = 'there') =>
+  `Thanks ${name}. How would you like to move forward?`;
+export const H2_BUTTONS = [
+  { id: 'hot_book',     title: 'Book a call' },
+  { id: 'hot_callback', title: 'Request a callback' },
+  { id: 'hot_chat',     title: 'Chat now' },
 ];
 
-// ── Hot lead messages ─────────────────────────────────────────────────────────
-
-export const HOT_PROSPECT_MSG = (name, salesRepName, calendlyLink) =>
-  `Thanks ${name} — I've shared your details with ${salesRepName} from our solutions team. She'll reach out within the next few hours.
-
-You can also book a slot directly:
+export const H3_BODY = (salesRepName, calendlyLink) =>
+  `Great — you can grab a 30-minute slot with ${salesRepName} here:
 ${calendlyLink}
 
-We typically start with a 30-minute call to understand your environment — no pitch, just a conversation.`;
+It's a conversation about your environment, not a pitch. See you there.`;
 
-export const HOT_SALES_BRIEF = (lead) =>
-  `🔴 Hot lead — ${lead.name || 'Unknown'}, ${lead.company || 'Unknown Company'}
+export const H4_BODY = `Sure — when's a good time to call, and on this number? (e.g. "Tomorrow 3–5pm, same number")`;
 
-Topic: ${topicLabel(lead.topic)}
+export const H11_BODY = (salesRepName) =>
+  `Got it 👍 ${salesRepName} from our solutions team will call you then. If anything changes, just reply here.`;
+
+export const HOT_CHAT_HANDOFF = (salesRepName) =>
+  `Connecting you with ${salesRepName} now — a real person will pick up this chat shortly. Feel free to type your question in the meantime.`;
+
+export const HOT_SALES_BRIEF = (lead, action = '') =>
+  `🔴 HOT lead — ${lead.name || 'Unknown'}, ${lead.company || 'Unknown Company'}
+${lead.email ? `Email: ${lead.email}\n` : ''}
+Service: ${topicLabel(lead.topic)}
 Size: ${sizeLabel(lead.companySize)}
-Status: ${situationLabel(lead.situation)}
+Situation: ${situationLabel(lead.situation)}
 Timeline: ${timelineLabel(lead.timeline)}
-Their message: "${lead.firstMessage || '—'}"
+Role: ${roleLabel(lead.role)}
+${lead.talkToPerson ? 'Requested: talk to a person\n' : ''}${action ? `Action: ${action}\n` : ''}${lead.callbackTime ? `Callback: ${lead.callbackTime}\n` : ''}Source: ${channelLabel(lead.channel)}${lead.referral?.headline ? ` — "${lead.referral.headline}"` : ''}
+First message: "${lead.firstMessage || '—'}"
 
-Calendly link sent to them.
 → wa.me/${lead.phone}`;
 
-export const PRE_CALL_BRIEF = (lead) =>
-  `📋 Pre-call brief — ${lead.name || 'Unknown'}, ${lead.company || 'Unknown'}
+// ── WARM path ────────────────────────────────────────────────────────────────
+export const A_W_BODY = (topic) =>
+  `Thanks — based on what you've shared, here's a quick ${topicShort(topic)} checklist we use with clients:
 
-Company: ${lead.company || '—'}, ~${sizeLabel(lead.companySize)} employees
-Their pain: ${topicLabel(lead.topic)}
-Current setup: ${situationLabel(lead.situation)}
-Timeline: ${timelineLabel(lead.timeline)}
-WhatsApp: wa.me/${lead.phone}
+${TOPIC_CHECKLIST[topic] || TOPIC_CHECKLIST.default}`;
 
-Suggested opening: Ask about their current Azure spend and what's not working with their current provider.`;
+export const N1_BODY = `Want me to send a few short, useful resources over the next couple of weeks? No spam — just practical material you can share internally.`;
+export const N1_BUTTONS = [
+  { id: 'warm_yes', title: 'Yes, send them' },
+  { id: 'warm_no',  title: 'Not right now' },
+];
 
-export const POST_CALL_MSG = (name) =>
+export const WARM_CONFIRM = (name = 'there') =>
+  `Perfect, ${name}. I'll send the first one in a few days. Reply "stop" any time to pause.`;
+
+export const X6_BODY = `No problem at all. Whenever you're ready, just message here and we'll pick it up. 👋`;
+
+// ── COLD path ────────────────────────────────────────────────────────────────
+export const A_C_BODY = (topic) =>
+  `Thanks for reaching out. Here's a short ${topicShort(topic)} guide that should help you at this stage:
+
+${TOPIC_GUIDE[topic] || TOPIC_GUIDE.default}`;
+export const COLD_BUTTONS = [
+  { id: 'cold_menu',   title: 'Back to menu' },
+  { id: 'cold_finish', title: 'Finish' },
+];
+export const COLD_FINISH_BODY = `Thanks again — good luck with the project. We're here whenever the timing's right. 👋`;
+
+// ── Post-call follow-up (admin-triggered from Leads page) ────────────────────
+export const POST_CALL_MSG = (name = 'there') =>
   `Hi ${name} — great speaking with you today.
 
 As discussed, I'm sending across:
 [1] CloudSwift managed services overview
-[2] Case study — similar migration scope
-[3] Pricing framework
+[2] A relevant case study
+[3] Our pricing framework
 
-Our team will send a formal proposal within 48 hours. Any questions in the meantime, just reply here.`;
+We'll follow up with a formal proposal within 48 hours. Any questions in the meantime, just reply here.`;
 
-// ── Warm nurture messages ─────────────────────────────────────────────────────
+// ── Nurture ──────────────────────────────────────────────────────────────────
+export const NURTURE_D3 = (name = 'there') =>
+  `Hi ${name} — following up from earlier. Happy to answer any Azure or managed-cloud questions.
 
-export const NURTURE_D3 = (name) =>
-  `Hi ${name} — just following up from our chat earlier this week.
+Would a one-pager on how we moved a client's infrastructure to Azure in 6 weeks be useful?`;
 
-Happy to answer any questions about Azure managed services or how we've helped companies like yours.
+export const NURTURE_D7 = (name = 'there') =>
+  `${name} — sharing this in case it helps. We worked with a company in a similar spot — legacy on-prem, hard deadline. If that's you, our team offers a free 30-minute infrastructure assessment. Want the availability?`;
 
-If it's useful, I can send you a one-pager on how we helped a client move their entire infrastructure to Azure in 6 weeks. Worth a look?`;
+export const NURTURE_D21 = (name = 'there') =>
+  `${name} — last note from me for now. If the timing isn't right, no problem. When it is, CloudSwift is here.
 
-export const NURTURE_D7 = (name) =>
-  `${name} — sending this across in case it's useful.
+Reply "yes" any time for a free cloud readiness assessment.`;
 
-We worked with a company in a similar situation — a legacy on-prem setup and a hard deadline. If you're in a comparable position, our solutions team would be happy to do a 30-minute infrastructure assessment. No cost, no obligation.
+// ── Safety nets ──────────────────────────────────────────────────────────────
+export const X1_BODY = `Sorry, I didn't catch that. Please tap one of the options — or I can get you a person.`;
+export const X1_BUTTONS = [
+  { id: 'x_retry',       title: 'Try again' },
+  { id: 'a1_talk_person',title: 'Talk to a person' },
+  { id: 'x_menu',        title: 'Main menu' },
+];
 
-Want me to send their availability?`;
+export const X2_RESUME_BODY = (name = 'there') =>
+  `Hi ${name} — want to pick up where we left off? It only takes a moment.`;
+export const X2_RESUME_BUTTONS = [
+  { id: 'x_resume', title: 'Continue' },
+  { id: 'x_menu',   title: 'Main menu' },
+];
 
-export const NURTURE_D21 = (name) =>
-  `${name} — last note from me. If the timing isn't right, no problem at all. When it is, CloudSwift is here.
+export const X3_STOP_BODY = `You're unsubscribed — we won't send you any more automated messages. Message us any time if you'd like to talk. 👋`;
 
-If you'd like a free cloud infrastructure assessment before you make any decisions, I can set that up at any point. Just reply "yes" and I'll send our team's calendar.
+// ── Per-topic content ────────────────────────────────────────────────────────
+export const TOPIC_CHECKLIST = {
+  azure_migration:
+    `• Inventory current workloads & dependencies
+• Right-size before you lift-and-shift
+• Set up landing zones + governance early
+• Plan identity (Entra ID) and networking
+• Model cost with the Azure pricing calculator`,
+  m365:
+    `• Audit current licences vs. actual usage
+• Plan identity & conditional access
+• Map data migration (mail, files, Teams)
+• Set retention & compliance policies
+• Train users before cutover`,
+  managed_cloud:
+    `• Define SLAs and escalation paths
+• Set up monitoring & alerting baselines
+• Establish patching & backup cadence
+• Review cost optimisation monthly
+• Document runbooks for common incidents`,
+  security:
+    `• Enable MFA everywhere + conditional access
+• Review identity & privileged access
+• Turn on Defender for Cloud recommendations
+• Set up centralised logging
+• Run a posture assessment against CIS/NIST`,
+  other:
+    `• Clarify the outcome you're after
+• Note current environment & constraints
+• List must-haves vs. nice-to-haves
+• Set a rough budget & timeline`,
+  default:
+    `• Clarify the outcome you're after
+• Note current environment & constraints
+• List must-haves vs. nice-to-haves
+• Set a rough budget & timeline`,
+};
 
-Either way — good luck with whatever you're working on.`;
+export const TOPIC_GUIDE = {
+  azure_migration:
+    `Start with a cloud readiness assessment — it maps workloads, dependencies and a right-sized target so you avoid surprise costs. Happy to send a template when you're ready.`,
+  m365:
+    `Begin with a licence + usage audit — most teams over-license. That alone usually frees budget for the migration itself.`,
+  managed_cloud:
+    `A good managed-cloud engagement starts with clear SLAs and a monitoring baseline. We can share a sample scope whenever it's useful.`,
+  security:
+    `Quick wins: MFA everywhere, conditional access, and Defender for Cloud. A short posture assessment shows where you stand fast.`,
+  other:
+    `Happy to point you in the right direction — just tell us a bit more whenever you're ready.`,
+  default:
+    `Happy to point you in the right direction — just tell us a bit more whenever you're ready.`,
+};
 
-// ── Cold exit ────────────────────────────────────────────────────────────────
-
-export const COLD_EXIT = (name) =>
-  `Thanks for reaching out ${name} — it sounds like the timing might not be right just yet.
-
-If anything changes, we're here. And if you know anyone dealing with Azure migration or managed cloud challenges, we'd love an introduction.
-
-We also offer a free cloud readiness assessment — no obligations. Happy to send that across if useful.
-
-Take care!`;
-
-// ── Label helpers ─────────────────────────────────────────────────────────────
-
+// ── Label helpers ────────────────────────────────────────────────────────────
 export function topicLabel(t) {
-  const map = {
+  return ({
     azure_migration: 'Azure migration or infrastructure',
     m365:            'Microsoft 365 / Dynamics 365',
     managed_cloud:   'Managed cloud support',
     security:        'Security or compliance',
     other:           'Something else',
-  };
-  return map[t] || t || '—';
+  })[t] || t || '—';
 }
-
+export function topicShort(t) {
+  return ({
+    azure_migration: 'Azure migration',
+    m365:            'Microsoft 365',
+    managed_cloud:   'managed cloud',
+    security:        'cloud security',
+    other:           'cloud',
+  })[t] || 'cloud';
+}
 export function sizeLabel(s) {
-  const map = {
-    under_100:  'Under 100',
-    '100_500':  '100–500',
-    '500_2000': '500–2,000',
-    '2000_plus':'2,000+',
-  };
-  return map[s] || s || '—';
+  return ({
+    under_100: 'Under 100', '100_500': '100–499', '500_plus': '500+',
+    '500_2000': '500–2,000', '2000_plus': '2,000+',
+  })[s] || s || '—';
 }
-
 export function situationLabel(s) {
-  const map = {
-    not_working: 'Current MSP not working',
-    first_eval:  'Evaluating for first time',
-    switching:   'Looking to switch providers',
-    exploring:   'Just exploring',
-  };
-  return map[s] || s || '—';
+  return ({
+    not_working: 'Provider not working', first_eval: 'First evaluation',
+    switching: 'Switching / problem', exploring: 'Researching',
+  })[s] || s || '—';
 }
-
 export function timelineLabel(t) {
-  const map = {
-    this_quarter: 'This quarter — moving fast',
-    next_quarter: 'Next quarter',
-    six_months:   'Within 6 months',
-    researching:  'Just researching',
-  };
-  return map[t] || t || '—';
+  return ({
+    this_quarter: 'This quarter', next_quarter: 'Next quarter',
+    six_months: 'Within 6 months', researching: 'Just researching',
+  })[t] || t || '—';
+}
+export function roleLabel(r) {
+  return ({ decision_maker: 'Decision-maker', evaluating_team: 'Evaluating for team' })[r] || r || '—';
+}
+export function channelLabel(c) {
+  return ({
+    meta_ctwa: 'Meta ad (WhatsApp)', google_ad: 'Google ad', organic: 'Organic',
+    cold_email: 'Cold email', referral: 'Referral', direct: 'Direct', unknown: 'Unknown',
+  })[c] || c || 'Unknown';
 }
 
-// Button ID → model field value maps
-export const TOPIC_MAP = {
-  topic_azure:    'azure_migration',
-  topic_m365:     'm365',
-  topic_managed:  'managed_cloud',
-  topic_security: 'security',
-  topic_other:    'other',
-};
+// ── STOP keyword detection ───────────────────────────────────────────────────
+const STOP_WORDS = ['stop', 'unsubscribe', 'cancel', 'opt out', 'optout', 'remove me'];
+export function isStopKeyword(text = '') {
+  const t = (text || '').toLowerCase().trim();
+  return STOP_WORDS.some((w) => t === w || t === w.replace(' ', ''));
+}
 
-export const SIZE_MAP = {
-  size_under_100: 'under_100',
-  size_100_500:   '100_500',
-  size_500_2000:  '500_2000',
-  size_2000_plus: '2000_plus',
-};
-
-export const SITUATION_MAP = {
-  sit_not_working: 'not_working',
-  sit_first_eval:  'first_eval',
-  sit_switching:   'switching',
-  sit_exploring:   'exploring',
-};
-
-export const TIMELINE_MAP = {
-  tl_this_quarter: 'this_quarter',
-  tl_next_quarter: 'next_quarter',
-  tl_six_months:   'six_months',
-  tl_researching:  'researching',
-};
+// ── Positive reply detection (nurture re-entry) ──────────────────────────────
+export function isPositiveReply(text = '') {
+  const t = (text || '').toLowerCase().trim();
+  return ['yes', 'yeah', 'sure', 'ok', 'okay', 'interested', 'tell me more', 'book', 'send', 'yes please']
+    .some((p) => t.includes(p));
+}

@@ -12,6 +12,8 @@ const DEFAULT_SETTINGS = [
   { key: 'salesRepWaNumber',value: '',           label: 'Sales Rep WhatsApp Number (with country code, e.g. 919XXXXXXXXX)', group: 'Sales', inputType: 'phone' },
   { key: 'calendlyLink',    value: '',           label: 'Calendly Booking Link',      group: 'Sales',     inputType: 'url' },
   { key: 'waGreeting',      value: '',           label: 'WhatsApp Greeting Override (leave blank to use default)', group: 'WhatsApp', inputType: 'textarea' },
+  { key: 'flowHeading',     value: 'Welcome to CloudSwift ☁️', label: 'Service Flow — Heading (inside the picker)', group: 'WhatsApp', inputType: 'text' },
+  { key: 'flowSubheading',  value: 'Select a service to get started:', label: 'Service Flow — Subheading', group: 'WhatsApp', inputType: 'text' },
   { key: 'caseStudyUrl',    value: '',           label: 'Case Study Link',            group: 'Content',   inputType: 'url' },
   { key: 'overviewPdfUrl',  value: '',           label: 'Managed Services Overview PDF URL', group: 'Content', inputType: 'url' },
   { key: 'pricingFrameworkUrl', value: '',       label: 'Pricing Framework URL',      group: 'Content',   inputType: 'url' },

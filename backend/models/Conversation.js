@@ -22,6 +22,10 @@ const ConversationSchema = new mongoose.Schema(
     reviewed: { type: Boolean, default: false },
     // Pinned in CRM view
     pinned: { type: Boolean, default: false },
+    // Human takeover (X4) — when true the bot stops auto-replying to this contact
+    botPaused: { type: Boolean, default: false },
+    // Opt-out (X3 STOP) — no further automated messages
+    optedOut: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

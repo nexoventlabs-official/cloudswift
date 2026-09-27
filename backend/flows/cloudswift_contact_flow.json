@@ -1,0 +1,55 @@
+{
+  "version": "6.3",
+  "routing_model": {
+    "CONTACT": []
+  },
+  "screens": [
+    {
+      "id": "CONTACT",
+      "title": "Your details",
+      "terminal": true,
+      "success": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Almost there 🎉" },
+          { "type": "TextBody", "text": "Share your details and the right CloudSwift specialist will reach out." },
+          {
+            "type": "TextInput",
+            "name": "full_name",
+            "label": "Your name",
+            "input-type": "text",
+            "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "company",
+            "label": "Company name",
+            "input-type": "text",
+            "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "email",
+            "label": "Work email",
+            "input-type": "email",
+            "required": true
+          },
+          {
+            "type": "Footer",
+            "label": "Submit",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "full_name": "${form.full_name}",
+                "company": "${form.company}",
+                "email": "${form.email}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

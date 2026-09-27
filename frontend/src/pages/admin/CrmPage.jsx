@@ -74,7 +74,9 @@ export default function CrmPage() {
     try {
       await api.post(`/crm/conversations/${selected.phone}/send`, { message: text });
       setMessages(prev => [...prev, { _id: Date.now(), direction:'outbound', type:'text', body: text, createdAt: new Date() }]);
-      setConvs(prev => prev.map(c => c.phone === selected.phone ? { ...c, lastMessage: text } : c));
+      // Sending a manual reply auto-pauses the bot (agent has taken over)
+      setConvs(prev => prev.map(c => c.phone === selected.phone ? { ...c, lastMessage: text, botPaused: true } : c));
+      setSelected(s => ({ ...s, botPaused: true }));
     } catch (e) {
       setToast('Failed: ' + e.message);
       setTimeout(() => setToast(''), 3000);
@@ -86,6 +88,19 @@ export default function CrmPage() {
     await api.patch(`/crm/conversations/${phone}`, { label });
     setConvs(prev => prev.map(c => c.phone === phone ? { ...c, label } : c));
     if (selected?.phone === phone) setSelected(s => ({ ...s, label }));
+  }
+
+  async function toggleBot(phone, paused) {
+    try {
+      await api.post(`/crm/conversations/${phone}/bot`, { paused });
+      setConvs(prev => prev.map(c => c.phone === phone ? { ...c, botPaused: paused } : c));
+      if (selected?.phone === phone) setSelected(s => ({ ...s, botPaused: paused }));
+      setToast(paused ? 'Bot paused — you are handling this chat' : 'Bot resumed');
+      setTimeout(() => setToast(''), 2500);
+    } catch (e) {
+      setToast('Failed: ' + e.message);
+      setTimeout(() => setToast(''), 3000);
+    }
   }
 
   return (
@@ -147,10 +162,23 @@ export default function CrmPage() {
           {/* Header */}
           <div style={{ padding:'14px 20px', borderBottom:'1px solid #1e293b', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
             <div>
-              <div style={{ color:'#f1f5f9', fontWeight:700, fontSize:16 }}>{selected.name || selected.phone}</div>
+              <div style={{ color:'#f1f5f9', fontWeight:700, fontSize:16, display:'flex', alignItems:'center', gap:8 }}>
+                {selected.name || selected.phone}
+                {selected.botPaused && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, background:'#f59e0b22', color:'#f59e0b', border:'1px solid #f59e0b44' }}>HUMAN</span>}
+                {selected.optedOut && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, background:'#ef444422', color:'#f87171', border:'1px solid #ef444444' }}>OPTED OUT</span>}
+              </div>
               <div style={{ color:'#64748b', fontSize:12 }}>{selected.phone} {selected.company ? `· ${selected.company}` : ''}</div>
             </div>
             <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <button
+                onClick={() => toggleBot(selected.phone, !selected.botPaused)}
+                title={selected.botPaused ? 'Hand this chat back to the bot' : 'Take over — pause the bot for this contact'}
+                style={{ padding:'7px 12px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer',
+                  background: selected.botPaused ? '#22c55e22' : '#f59e0b22',
+                  color: selected.botPaused ? '#4ade80' : '#f59e0b',
+                  border: `1px solid ${selected.botPaused ? '#22c55e44' : '#f59e0b44'}` }}>
+                {selected.botPaused ? '▶ Resume bot' : '⏸ Pause bot'}
+              </button>
               <select value={selected.label || 'none'} onChange={e => setLabel(selected.phone, e.target.value)} style={selStyle}>
                 <option value="none">No label</option>
                 <option value="hot">🔴 Hot</option>

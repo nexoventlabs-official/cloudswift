@@ -1,52 +1,38 @@
 /**
- * Lead scoring engine.
- * Returns 'HOT' | 'WARM' | 'COLD' based on qualification answers.
+ * Lead scoring engine (QR rules).
+ * Returns 'HOT' | 'WARM' | 'COLD'.
  *
- * Rules (from WHATSAPP_AUTOMATION_v2.md):
- * HOT  — 500+ employees (any timeline, any intent)
- * HOT  — 100–500 employees + this/next quarter + switching/not_working/first_eval
- * HOT  — 100+ employees + first evaluation + this quarter
- * WARM — any size + switching/not_working + within 6 months
- * WARM — any size + first_eval + next_quarter/six_months
- * COLD — just researching + 6+ months / under 100
+ * Hard overrides:
+ *   - talkToPerson (A1)                     -> HOT
+ *   - 500+ employees (any answers)          -> HOT   (Q1 short-circuits to this)
+ *
+ * Otherwise combine situation + timeline + role:
+ *   HOT  — decision_maker + (switching|first_eval|not_working) + (this_quarter|next_quarter)
+ *   HOT  — switching|not_working + this_quarter (any role)
+ *   WARM — (switching|first_eval|not_working) + (this_quarter|next_quarter|six_months)
+ *   WARM — decision_maker + six_months
+ *   WARM — evaluating_team + (this_quarter|next_quarter)
+ *   COLD — everything else (exploring / researching / far-off + low intent)
  */
-export function scoreLead({ companySize, situation, timeline }) {
-  // Enterprise override — always HOT regardless
-  if (companySize === '500_2000' || companySize === '2000_plus') {
-    return 'HOT';
-  }
+export function scoreLead({ companySize, situation, timeline, role, talkToPerson } = {}) {
+  // Hard overrides
+  if (talkToPerson) return 'HOT';
+  if (['500_plus', '500_2000', '2000_plus'].includes(companySize)) return 'HOT';
 
-  // 100–500 employees with urgency
-  if (companySize === '100_500') {
-    if (
-      (situation === 'not_working' || situation === 'switching' || situation === 'first_eval') &&
-      (timeline === 'this_quarter' || timeline === 'next_quarter')
-    ) {
-      return 'HOT';
-    }
-    if (
-      (situation === 'not_working' || situation === 'switching') &&
-      timeline === 'six_months'
-    ) {
-      return 'WARM';
-    }
-    if (situation === 'first_eval' && (timeline === 'next_quarter' || timeline === 'six_months')) {
-      return 'WARM';
-    }
-  }
+  const highIntent = situation === 'switching' || situation === 'not_working' || situation === 'first_eval';
+  const near       = timeline === 'this_quarter' || timeline === 'next_quarter';
+  const within6    = near || timeline === 'six_months';
+  const isDM       = role === 'decision_maker';
 
-  // Any size — switching/problem within 6 months → WARM
-  if (
-    (situation === 'not_working' || situation === 'switching') &&
-    (timeline === 'this_quarter' || timeline === 'next_quarter' || timeline === 'six_months')
-  ) {
-    return 'WARM';
-  }
+  // HOT
+  if (isDM && highIntent && near) return 'HOT';
+  if ((situation === 'switching' || situation === 'not_working') && timeline === 'this_quarter') return 'HOT';
 
-  // Under 100 + just researching → COLD
-  if (companySize === 'under_100' && situation === 'exploring') return 'COLD';
-  if (timeline === 'researching') return 'COLD';
+  // WARM
+  if (highIntent && within6) return 'WARM';
+  if (isDM && timeline === 'six_months') return 'WARM';
+  if (role === 'evaluating_team' && near) return 'WARM';
 
-  // Default fallback
+  // COLD — just exploring/researching or far-off with weak intent
   return 'COLD';
 }

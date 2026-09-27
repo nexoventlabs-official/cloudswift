@@ -45,7 +45,10 @@ router.post('/', upload.single('file'), async (req, res) => {
     let fileSize = 0;
 
     if (type !== 'link' && req.file) {
-      const folder = `cloudswift/${group || 'general'}`.toLowerCase().replace(/\s+/g, '_');
+      // Cloudinary public_ids allow only letters, numbers, _ and - (and / for folders)
+      const safeGroup = (group || 'general').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const safeKey   = String(key).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const folder = `cloudswift/${safeGroup}`;
       const resourceType = type === 'pdf' ? 'raw' : 'image';
 
       // Delete old asset if exists
@@ -56,7 +59,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 
       const result = await uploadToCloudinary(req.file.buffer, {
         folder,
-        public_id: key,
+        public_id: safeKey,
         resource_type: resourceType,
         overwrite: true,
       });

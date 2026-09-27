@@ -58,7 +58,7 @@ router.post('/conversations/:phone/send', async (req, res) => {
 
     const result = await sendText(phone, message);
 
-    // Log outbound message
+    // Log outbound message + auto-pause the bot (agent has taken over this chat)
     const conv = await Conversation.findOne({ phone });
     if (conv) {
       await Message.create({
@@ -72,13 +72,29 @@ router.post('/conversations/:phone/send', async (req, res) => {
       });
       await Conversation.findOneAndUpdate(
         { phone },
-        { $set: { lastMessage: message, lastMessageAt: new Date() } }
+        { $set: { lastMessage: message, lastMessageAt: new Date(), botPaused: true } }
       );
     }
 
-    res.json({ success: true, message: 'Sent' });
+    res.json({ success: true, message: 'Sent', botPaused: true });
   } catch (err) {
     logger.error('CRM send error', { error: err.message });
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── POST /api/crm/conversations/:phone/bot — pause/resume the bot (human takeover) ──
+router.post('/conversations/:phone/bot', async (req, res) => {
+  try {
+    const { paused } = req.body; // true = human takeover, false = hand back to bot
+    const conv = await Conversation.findOneAndUpdate(
+      { phone: req.params.phone },
+      { $set: { botPaused: Boolean(paused) } },
+      { new: true }
+    );
+    if (!conv) return res.status(404).json({ success: false, message: 'Not found' });
+    res.json({ success: true, data: conv });
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -86,7 +102,7 @@ router.post('/conversations/:phone/send', async (req, res) => {
 // ── PATCH /api/crm/conversations/:phone — update label, pinned ───────────────
 router.patch('/conversations/:phone', async (req, res) => {
   try {
-    const allowed = ['label', 'pinned', 'reviewed', 'name', 'company'];
+    const allowed = ['label', 'pinned', 'reviewed', 'name', 'company', 'botPaused'];
     const update  = {};
     for (const k of allowed) {
       if (req.body[k] !== undefined) update[k] = req.body[k];

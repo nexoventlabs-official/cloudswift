@@ -37,23 +37,70 @@ export async function sendText(to, body) {
 }
 
 // ── Interactive message with quick-reply buttons (up to 3) ──────────────────
-export async function sendButtons(to, body, buttons) {
+export async function sendButtons(to, body, buttons, headerImageUrl = '') {
   // buttons: [{ id: 'btn_1', title: 'Option 1' }, ...]
+  const interactive = {
+    type: 'button',
+    body: { text: body },
+    action: {
+      buttons: buttons.slice(0, 3).map((b) => ({
+        type: 'reply',
+        reply: { id: b.id, title: b.title },
+      })),
+    },
+  };
+  if (headerImageUrl) {
+    interactive.header = { type: 'image', image: { link: headerImageUrl } };
+  }
   return send({
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to,
     type: 'interactive',
-    interactive: {
-      type: 'button',
-      body: { text: body },
-      action: {
-        buttons: buttons.map((b) => ({
-          type: 'reply',
-          reply: { id: b.id, title: b.title },
-        })),
+    interactive,
+  });
+}
+
+// ── Interactive Flow message (native WhatsApp Flow) ─────────────────────────
+export async function sendFlow(to, {
+  flowId,
+  flowToken = 'cloudswift',
+  cta = 'Choose service',
+  screen = 'CHOOSE_SERVICE',
+  data = {},
+  headerImageUrl = '',
+  body = '',
+  footer = 'CloudSwift',
+}) {
+  const flowActionPayload = { screen };
+  if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+    flowActionPayload.data = data;
+  }
+  const interactive = {
+    type: 'flow',
+    body: { text: body },
+    footer: { text: footer },
+    action: {
+      name: 'flow',
+      parameters: {
+        flow_message_version: '3',
+        flow_token: flowToken,
+        flow_id: String(flowId),
+        flow_cta: cta,
+        flow_action: 'navigate',
+        flow_action_payload: flowActionPayload,
       },
     },
+  };
+  if (headerImageUrl) {
+    interactive.header = { type: 'image', image: { link: headerImageUrl } };
+  }
+  return send({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to,
+    type: 'interactive',
+    interactive,
   });
 }
 

@@ -74,6 +74,7 @@ router.post('/', async (req, res) => {
           parsed.name        = names[message.from] || '';
           parsed.waMessageId = message.id;
           parsed.rawPayload  = message;
+          parsed.referral    = parseReferral(message);
 
           handleMessage(parsed).catch((e) =>
             logger.error('handleMessage error', { error: e.message, stack: e.stack })
@@ -105,14 +106,41 @@ function parseIncoming(message) {
         out.type       = 'list';
         out.selectedId = it.list_reply?.id || '';
         out.text       = it.list_reply?.title || '';
+      } else if (it.type === 'nfm_reply' || it.nfm_reply) {
+        // Native WhatsApp Flow submission
+        out.type = 'flow';
+        out.text = '[flow submitted]';
+        try { out.flowResponse = JSON.parse(it.nfm_reply?.response_json || '{}'); }
+        catch { out.flowResponse = {}; }
       }
       break;
     }
+    case 'button':
+      // Template quick-reply button
+      out.type = 'button';
+      out.text = message.button?.text || '';
+      out.selectedId = message.button?.payload || '';
+      break;
     default:
       out.text = '[unsupported message type]';
   }
 
-  return out.text || out.selectedId ? out : null;
+  return (out.text || out.selectedId || out.flowResponse) ? out : null;
+}
+
+// ── Parse click-to-WhatsApp ad referral data ─────────────────────────────────
+function parseReferral(message) {
+  const r = message.referral;
+  if (!r) return null;
+  return {
+    sourceUrl:  r.source_url  || '',
+    sourceId:   r.source_id   || '',
+    sourceType: r.source_type || '',
+    headline:   r.headline    || '',
+    body:       r.body        || '',
+    ctwaClid:   r.ctwa_clid   || '',
+    mediaType:  r.media_type  || '',
+  };
 }
 
 function timingSafeEqual(a, b) {

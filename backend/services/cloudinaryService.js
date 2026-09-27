@@ -1,11 +1,18 @@
 import { v2 as cloudinary } from 'cloudinary';
 import logger from './logger.js';
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Configure lazily at call time — env vars aren't loaded yet when this module
+// is first imported (ESM imports run before dotenv.config() in server.js).
+let _configured = false;
+function ensureConfigured() {
+  if (_configured) return;
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  _configured = true;
+}
 
 /**
  * Upload a file buffer or local path to Cloudinary.
@@ -22,6 +29,7 @@ export async function uploadToCloudinary(source, options = {}) {
     overwrite: true,
   };
   const opts = { ...defaults, ...options };
+  ensureConfigured();
 
   return new Promise((resolve, reject) => {
     if (Buffer.isBuffer(source)) {
@@ -46,6 +54,7 @@ export async function uploadToCloudinary(source, options = {}) {
  */
 export async function deleteFromCloudinary(publicId, resourceType = 'image') {
   try {
+    ensureConfigured();
     await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
   } catch (err) {
     logger.warn('Cloudinary delete error', { publicId, error: err.message });

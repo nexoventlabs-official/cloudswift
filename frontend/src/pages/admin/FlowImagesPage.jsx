@@ -2,43 +2,32 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../adminApi.js';
 import Loader from './Loader.jsx';
 
-// All flow asset slots — keyed by slug, grouped for the admin UI
+// Flow asset slots — every key here is actually used by the WhatsApp bot.
 const ASSET_FIELDS = [
   {
-    group: 'Welcome & Branding',
+    group: 'Service Picker Flow',
     items: [
-      { key: 'welcome_header',     label: 'Welcome Message Header',           type: 'image', aspectRatio: 'original' },
-      { key: 'welcome_banner',     label: 'Welcome Flow Banner (8:1)',         type: 'image', aspectRatio: '8:1' },
-      { key: 'cloudswift_logo',    label: 'CloudSwift Logo (1:1)',             type: 'image', aspectRatio: '1:1' },
+      { key: 'welcome_header',  label: 'Service Picker — message header (ad reply)', type: 'image', aspectRatio: 'original' },
+      { key: 'welcome_banner',  label: 'Service Picker — in-flow banner (8:1)',      type: 'image', aspectRatio: '8:1' },
+      { key: 'icon_azure',      label: 'Azure migration — row icon (1:1)',           type: 'image', aspectRatio: '1:1' },
+      { key: 'icon_m365',       label: 'Microsoft 365 — row icon (1:1)',             type: 'image', aspectRatio: '1:1' },
+      { key: 'icon_managed',    label: 'Managed cloud — row icon (1:1)',             type: 'image', aspectRatio: '1:1' },
+      { key: 'icon_security',   label: 'Security — row icon (1:1)',                  type: 'image', aspectRatio: '1:1' },
     ]
   },
   {
-    group: 'Service Icons',
+    group: 'Message Headers',
     items: [
-      { key: 'icon_azure',         label: 'Azure Migration Icon (1:1)',        type: 'image', aspectRatio: '1:1' },
-      { key: 'icon_m365',          label: 'Microsoft 365 Icon (1:1)',          type: 'image', aspectRatio: '1:1' },
-      { key: 'icon_managed',       label: 'Managed Cloud Icon (1:1)',          type: 'image', aspectRatio: '1:1' },
-      { key: 'icon_security',      label: 'Security Icon (1:1)',               type: 'image', aspectRatio: '1:1' },
-    ]
-  },
-  {
-    group: 'Lead Flow Images',
-    items: [
-      { key: 'hot_lead_header',    label: 'Hot Lead Confirmation Header',      type: 'image', aspectRatio: 'original' },
-      { key: 'calendly_header',    label: 'Calendly / Book a Call Header',     type: 'image', aspectRatio: 'original' },
-      { key: 'thank_you_header',   label: 'Thank You / Post-Call Header',      type: 'image', aspectRatio: 'original' },
-      { key: 'nurture_header',     label: 'Nurture Sequence Header',           type: 'image', aspectRatio: 'original' },
-    ]
-  },
-  {
-    group: 'Documents & Links',
-    items: [
-      { key: 'case_study_pdf',     label: 'Case Study PDF',                    type: 'pdf' },
-      { key: 'overview_pdf',       label: 'Managed Services Overview PDF',     type: 'pdf' },
-      { key: 'pricing_pdf',        label: 'Pricing Framework PDF',             type: 'pdf' },
-      { key: 'google_review_link', label: 'Google Review Link',               type: 'link' },
-      { key: 'linkedin_url',       label: 'LinkedIn Company URL',              type: 'link' },
-      { key: 'website_url',        label: 'Website URL',                       type: 'link' },
+      { key: 'a1_header',       label: 'Questions intro header (Continue / Talk to a person)', type: 'image', aspectRatio: 'original' },
+      { key: 'qualify_header',  label: '4-question form header',                      type: 'image', aspectRatio: 'original' },
+      { key: 'hot_lead_header', label: 'Hot lead — contact form header',              type: 'image', aspectRatio: 'original' },
+      { key: 'h2_header',       label: 'Book / Callback / Chat header',               type: 'image', aspectRatio: 'original' },
+      { key: 'calendly_header', label: 'Book a call header',                          type: 'image', aspectRatio: 'original' },
+      { key: 'nurture_header',  label: 'Warm — checklist header',                     type: 'image', aspectRatio: 'original' },
+      { key: 'n1_header',       label: 'Warm — “send resources?” header',             type: 'image', aspectRatio: 'original' },
+      { key: 'thank_you_header',label: 'Cold — guide header',                         type: 'image', aspectRatio: 'original' },
+      { key: 'x1_header',       label: '“Didn’t catch that” prompt header',           type: 'image', aspectRatio: 'original' },
+      { key: 'resume_header',   label: 'Resume nudge header (drop-off)',              type: 'image', aspectRatio: 'original' },
     ]
   },
 ];
@@ -167,12 +156,18 @@ export default function FlowImagesPage() {
                     {field.type === 'image' && (
                       <div style={{
                         background:'#0f172a', borderRadius:8, overflow:'hidden', border:'1px solid #334155',
-                        aspectRatio: isWide ? '8/1' : isSquare ? '1/1' : 'auto',
-                        minHeight: isWide ? undefined : isSquare ? undefined : 100,
+                        width:'100%',
+                        aspectRatio: isWide ? '8 / 1' : isSquare ? '1 / 1' : undefined,
+                        minHeight: (isWide || isSquare) ? undefined : 120,
+                        maxHeight: isSquare ? 260 : undefined,
                         display:'flex', alignItems:'center', justifyContent:'center',
                       }}>
                         {current?.url ? (
-                          <img src={current.url} alt={field.label} style={{ width:'100%', height:'100%', objectFit: ratio === 'original' ? 'contain' : 'cover', maxHeight:200 }} />
+                          <img src={current.url} alt={field.label} style={{
+                            width:'100%', height:'100%',
+                            objectFit: ratio === 'original' ? 'contain' : 'cover',
+                            ...(ratio === 'original' ? { maxHeight:220 } : {}),
+                          }} />
                         ) : (
                           <div style={{ color:'#475569', fontSize:12, padding:16, textAlign:'center' }}>No image uploaded</div>
                         )}
@@ -228,10 +223,9 @@ export default function FlowImagesPage() {
       <div style={{ background:'#1e293b', border:'1px solid #1e3a5f', borderRadius:10, padding:20, marginTop:12 }}>
         <div style={{ color:'#2563eb', fontWeight:700, fontSize:14, marginBottom:10 }}>Upload Guidelines</div>
         <ul style={{ margin:0, paddingLeft:20, color:'#94a3b8', fontSize:13, lineHeight:1.8 }}>
-          <li><strong>Welcome Banners (8:1):</strong> Recommended 1000 × 125px</li>
-          <li><strong>Service Icons (1:1):</strong> Recommended 600 × 600px</li>
-          <li><strong>Original ratio images:</strong> Min 800px wide, max 5MB</li>
-          <li><strong>PDFs:</strong> Max 10MB — served directly from Cloudinary CDN</li>
+          <li><strong>In-flow banner (8:1):</strong> Recommended 1600 × 200px — shown inside the service picker</li>
+          <li><strong>Row icons (1:1):</strong> Recommended 400 × 400px — one per service</li>
+          <li><strong>Message headers (original ratio):</strong> Min 800px wide, max 5MB — shown above chat messages</li>
           <li>All images are auto-optimised and served via Cloudinary CDN</li>
         </ul>
       </div>
