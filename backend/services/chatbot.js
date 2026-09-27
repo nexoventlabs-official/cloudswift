@@ -217,19 +217,9 @@ async function sendN1(phone) {
 // ── A1 · Continue / Talk to a person ─────────────────────────────────────────
 async function handleA1(lead, conv, selectedId) {
   if (selectedId === 'a1_continue') {
-    // Prefer the multi-screen qualification Flow; fall back to buttons if unavailable
-    let sentFlow = false;
-    try { sentFlow = await sendQualifyFlow(lead.phone, lead.name); }
-    catch (e) { logger.warn('Qualify flow send failed, falling back to buttons', { error: e.message }); }
-
-    lead.invalidCount = 0;
-    if (sentFlow) {
-      lead.flowStep = 'qualify_sent';
-      setAwaiting(lead);
-      await lead.save();
-      return logOutbound(conv, lead.phone, '[qualification flow sent]');
-    }
+    // Ask company size first (its own step) so 500+ can skip straight to HOT
     lead.flowStep = 'q1_sent';
+    lead.invalidCount = 0;
     setAwaiting(lead);
     await lead.save();
     await sendButtons(lead.phone, Q1_BODY, Q1_BUTTONS);
@@ -241,15 +231,14 @@ async function handleA1(lead, conv, selectedId) {
 
 // ── Qualification Flow submission (all 4 answers at once) ────────────────────
 async function handleQualifySubmission(lead, conv, resp) {
-  const sizes  = ['under_100', '100_500', '500_plus'];
   const sits   = ['exploring', 'first_eval', 'switching'];
   const times  = ['this_quarter', 'next_quarter', 'six_months'];
   const roles  = ['decision_maker', 'evaluating_team'];
 
-  if (sizes.includes(resp.company_size)) lead.companySize = resp.company_size;
-  if (sits.includes(resp.situation))     lead.situation   = resp.situation;
-  if (times.includes(resp.timeline))     lead.timeline    = resp.timeline;
-  if (roles.includes(resp.role))         lead.role        = resp.role;
+  // companySize was already captured at Q1 (before this flow); flow returns the rest
+  if (sits.includes(resp.situation))  lead.situation = resp.situation;
+  if (times.includes(resp.timeline))  lead.timeline  = resp.timeline;
+  if (roles.includes(resp.role))      lead.role      = resp.role;
 
   if (!lead.companySize || !lead.situation || !lead.timeline || !lead.role) {
     return handleInvalid(lead, conv, 'qualify');
@@ -277,7 +266,19 @@ async function handleQ1(lead, conv, selectedId) {
   if (!size) return handleInvalid(lead, conv, 'q1');
   lead.companySize = size;
   lead.invalidCount = 0;
-  if (size === '500_plus') { await lead.save(); return goHot(lead, conv, 'Enterprise (500+)'); }
+  // 500+ → skip the rest of the questions and go straight to HOT
+  if (size === '500_plus') { await lead.save(); return goHot(lead, conv, 'Enterprise (500+) — skipped Q2-Q4'); }
+
+  // Otherwise collect situation/timeline/role via the multi-screen Flow (buttons fallback)
+  let sentFlow = false;
+  try { sentFlow = await sendQualifyFlow(lead.phone, lead.name); }
+  catch (e) { logger.warn('Qualify flow send failed, falling back to buttons', { error: e.message }); }
+  if (sentFlow) {
+    lead.flowStep = 'qualify_sent';
+    setAwaiting(lead);
+    await lead.save();
+    return logOutbound(conv, lead.phone, '[qualification flow sent]');
+  }
   lead.flowStep = 'q2_sent';
   setAwaiting(lead);
   await lead.save();

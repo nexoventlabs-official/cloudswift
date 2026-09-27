@@ -1,49 +1,15 @@
 {
   "version": "6.3",
   "routing_model": {
-    "SIZE": ["SITUATION"],
     "SITUATION": ["TIMELINE"],
     "TIMELINE": ["ROLE"],
     "ROLE": []
   },
   "screens": [
     {
-      "id": "SIZE",
-      "title": "About your company",
-      "data": {},
-      "layout": {
-        "type": "SingleColumnLayout",
-        "children": [
-          { "type": "TextHeading", "text": "First — roughly how many employees does your company have?" },
-          {
-            "type": "RadioButtonsGroup",
-            "name": "company_size",
-            "label": "Company size",
-            "required": true,
-            "data-source": [
-              { "id": "under_100", "title": "Under 100" },
-              { "id": "100_500", "title": "100–499" },
-              { "id": "500_plus", "title": "500+" }
-            ]
-          },
-          {
-            "type": "Footer",
-            "label": "Next",
-            "on-click-action": {
-              "name": "navigate",
-              "next": { "type": "screen", "name": "SITUATION" },
-              "payload": { "company_size": "${form.company_size}" }
-            }
-          }
-        ]
-      }
-    },
-    {
       "id": "SITUATION",
       "title": "Your situation",
-      "data": {
-        "company_size": { "type": "string", "__example__": "under_100" }
-      },
+      "data": {},
       "layout": {
         "type": "SingleColumnLayout",
         "children": [
@@ -65,10 +31,7 @@
             "on-click-action": {
               "name": "navigate",
               "next": { "type": "screen", "name": "TIMELINE" },
-              "payload": {
-                "company_size": "${data.company_size}",
-                "situation": "${form.situation}"
-              }
+              "payload": { "situation": "${form.situation}" }
             }
           }
         ]
@@ -78,7 +41,6 @@
       "id": "TIMELINE",
       "title": "Your timeline",
       "data": {
-        "company_size": { "type": "string", "__example__": "under_100" },
         "situation": { "type": "string", "__example__": "switching" }
       },
       "layout": {
@@ -103,7 +65,6 @@
               "name": "navigate",
               "next": { "type": "screen", "name": "ROLE" },
               "payload": {
-                "company_size": "${data.company_size}",
                 "situation": "${data.situation}",
                 "timeline": "${form.timeline}"
               }
@@ -118,7 +79,6 @@
       "terminal": true,
       "success": true,
       "data": {
-        "company_size": { "type": "string", "__example__": "under_100" },
         "situation": { "type": "string", "__example__": "switching" },
         "timeline": { "type": "string", "__example__": "this_quarter" }
       },
@@ -142,7 +102,6 @@
             "on-click-action": {
               "name": "complete",
               "payload": {
-                "company_size": "${data.company_size}",
                 "situation": "${data.situation}",
                 "timeline": "${data.timeline}",
                 "role": "${form.role}"

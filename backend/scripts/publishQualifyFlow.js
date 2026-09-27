@@ -37,14 +37,19 @@ async function run() {
   const flowJsonObj = JSON.parse(fs.readFileSync(FLOW_JSON_FILE, 'utf8'));
   const auth = { Authorization: `Bearer ${TOKEN}` };
 
-  console.log('1) Creating flow ...');
-  const createRes = await axios.post(
-    `${GRAPH}/${WABA_ID}/flows`,
-    { name: FLOW_NAME, categories: FLOW_CATEGORIES },
-    { headers: { ...auth, 'Content-Type': 'application/json' } }
-  );
-  const flowId = createRes.data.id;
-  console.log('   -> flow id:', flowId);
+  let flowId = process.env[ENV_KEY];
+  if (flowId) {
+    console.log('1) Updating existing flow', flowId, '...');
+  } else {
+    console.log('1) Creating flow ...');
+    const createRes = await axios.post(
+      `${GRAPH}/${WABA_ID}/flows`,
+      { name: FLOW_NAME, categories: FLOW_CATEGORIES },
+      { headers: { ...auth, 'Content-Type': 'application/json' } }
+    );
+    flowId = createRes.data.id;
+    console.log('   -> flow id:', flowId);
+  }
 
   console.log('2) Uploading flow JSON asset ...');
   const form = new FormData();
