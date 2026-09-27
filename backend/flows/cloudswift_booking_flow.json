@@ -1,0 +1,74 @@
+{
+  "version": "6.3",
+  "routing_model": {
+    "BOOK": []
+  },
+  "screens": [
+    {
+      "id": "BOOK",
+      "title": "Book a call",
+      "terminal": true,
+      "success": true,
+      "data": {
+        "wa_number": { "type": "string", "__example__": "919440203095" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          { "type": "TextHeading", "text": "Book your call 📞" },
+          { "type": "TextBody", "text": "Share your details and our team will reach out to confirm a slot." },
+          {
+            "type": "TextInput",
+            "name": "full_name",
+            "label": "Your name",
+            "input-type": "text",
+            "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "business_name",
+            "label": "Business name",
+            "input-type": "text",
+            "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "whatsapp_number",
+            "label": "WhatsApp number",
+            "input-type": "phone",
+            "init-value": "${data.wa_number}",
+            "enabled": false
+          },
+          {
+            "type": "TextInput",
+            "name": "phone_number",
+            "label": "Phone number",
+            "input-type": "phone",
+            "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "email",
+            "label": "Email",
+            "input-type": "email",
+            "required": true
+          },
+          {
+            "type": "Footer",
+            "label": "Submit",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "full_name": "${form.full_name}",
+                "business_name": "${form.business_name}",
+                "whatsapp_number": "${form.whatsapp_number}",
+                "phone_number": "${form.phone_number}",
+                "email": "${form.email}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

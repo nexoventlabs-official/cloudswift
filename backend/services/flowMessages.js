@@ -190,6 +190,14 @@ export const X2_RESUME_BUTTONS = [
 
 export const X3_STOP_BODY = `You're unsubscribed — we won't send you any more automated messages. Message us any time if you'd like to talk. 👋`;
 
+// General / terminal-state acknowledgement (with a Menu button)
+export const GENERAL_BODY = `Thanks — our team will follow up with you shortly.`;
+export const GENERAL_BUTTONS = [{ id: 'x_menu', title: 'Menu' }];
+
+// Booking confirmation (after the booking form is submitted)
+export const BOOKING_CONFIRM = (name, salesRepName) =>
+  `Thanks ${name || 'there'} 🎉 — ${salesRepName} will reach out shortly to confirm your call. Talk soon!`;
+
 // ── Per-topic content ────────────────────────────────────────────────────────
 export const TOPIC_CHECKLIST = {
   azure_migration:

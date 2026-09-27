@@ -176,3 +176,28 @@ export async function sendContactFlow(phone, name = '') {
   });
   return true;
 }
+
+/**
+ * Send the booking form flow (name, business, WhatsApp number [locked], phone, email).
+ * The contact's WhatsApp number is passed in and shown non-editable.
+ * Returns true if sent, false if the flow id isn't configured.
+ */
+export async function sendBookingFlow(phone, name = '') {
+  const flowId = process.env.WA_BOOKING_FLOW_ID;
+  if (!flowId) {
+    logger.warn('WA_BOOKING_FLOW_ID not set — cannot send booking form');
+    return false;
+  }
+  const headerUrl = await assetUrl('calendly_header');
+  await sendFlow(phone, {
+    flowId,
+    flowToken: `cloudswift_b_${phone}`,
+    cta: 'Book a call',
+    screen: 'BOOK',
+    data: { wa_number: phone },
+    headerImageUrl: headerUrl || '',
+    body: `Great${name ? ` ${name}` : ''} — let's get your call booked. Tap below to share your details.`,
+    footer: 'CloudSwift',
+  });
+  return true;
+}

@@ -19,7 +19,7 @@ import logger from './logger.js';
 // Mid-flow steps eligible for a resume nudge
 const AWAITING_STEPS = [
   'a0_sent', 'a1_sent', 'qualify_sent', 'q1_sent', 'q2_sent', 'q3_sent', 'q4_sent',
-  'awaiting_name_company', 'h2_sent', 'awaiting_callback_time', 'n1_sent', 'cold_guide',
+  'awaiting_name_company', 'h2_sent', 'awaiting_booking', 'awaiting_callback_time', 'n1_sent', 'cold_guide',
 ];
 
 // Can we send an automated message to this contact?

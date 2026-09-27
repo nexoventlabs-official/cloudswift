@@ -28,6 +28,7 @@ const ASSET_FIELDS = [
       { key: 'thank_you_header',label: 'Cold — guide header',                         type: 'image', aspectRatio: 'original' },
       { key: 'x1_header',       label: '“Didn’t catch that” prompt header',           type: 'image', aspectRatio: 'original' },
       { key: 'resume_header',   label: 'Resume nudge header (drop-off)',              type: 'image', aspectRatio: 'original' },
+      { key: 'general_header',  label: 'Follow-up / “team will reach out” header',    type: 'image', aspectRatio: 'original' },
     ]
   },
 ];

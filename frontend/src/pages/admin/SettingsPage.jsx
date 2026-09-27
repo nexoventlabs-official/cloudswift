@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../adminApi.js';
+import { SERVER_ORIGIN } from '../../config.js';
 import Loader from './Loader.jsx';
 
 export default function SettingsPage() {
@@ -115,7 +116,7 @@ export default function SettingsPage() {
         <div style={{ color:'#94a3b8', fontSize:13, lineHeight:1.8 }}>
           <div style={{ marginBottom:8 }}>Configure these in <strong style={{ color:'#f1f5f9' }}>Meta Business → WhatsApp → Configuration</strong>:</div>
           <div style={{ background:'#0f172a', borderRadius:8, padding:'10px 14px', fontFamily:'monospace', fontSize:12, color:'#e2e8f0', marginBottom:8 }}>
-            Callback URL: <span style={{ color:'#60a5fa' }}>{window.location.origin.replace('5173','5000')}/api/whatsapp/webhook</span>
+            Callback URL: <span style={{ color:'#60a5fa' }}>{SERVER_ORIGIN}/api/whatsapp/webhook</span>
           </div>
           <div style={{ background:'#0f172a', borderRadius:8, padding:'10px 14px', fontFamily:'monospace', fontSize:12, color:'#e2e8f0' }}>
             Verify Token: <span style={{ color:'#60a5fa' }}>cloudswift_whatsapp_verify_2026</span>

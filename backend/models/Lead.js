@@ -6,9 +6,10 @@ const LeadSchema = new mongoose.Schema(
   {
     // Identity
     phone:   { type: String, required: true, index: true },
-    name:    { type: String, default: '' },
-    company: { type: String, default: '' },
-    email:   { type: String, default: '' },
+    name:     { type: String, default: '' },
+    company:  { type: String, default: '' },
+    email:    { type: String, default: '' },
+    altPhone: { type: String, default: '' },  // separate phone number from the booking form
 
     // Qualification answers
     topic: {
@@ -60,7 +61,8 @@ const LeadSchema = new mongoose.Schema(
         // HOT
         'awaiting_name_company',  // H1 — waiting for name + company
         'h2_sent',                // Book / Callback / Chat asked
-        'booking_sent',           // H3 — Calendly link sent
+        'awaiting_booking',       // Booking form flow sent, waiting for details
+        'booking_sent',           // Booking details captured
         'awaiting_callback_time', // H4 — waiting for preferred callback time
         'callback_ack',           // H11 — callback acknowledged
         'human_handoff',          // Chat — assigned to a person, bot paused

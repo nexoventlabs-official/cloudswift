@@ -13,7 +13,7 @@ import { scoreLead } from './scoring.js';
 import { emitLead, emitLeadUpdate, emitMessage } from './eventBus.js';
 import logger from './logger.js';
 import { sendText, sendButtons, sendImage, markRead } from './metaCloud.js';
-import { sendServiceFlow, sendQualifyFlow, sendContactFlow } from './flowService.js';
+import { sendServiceFlow, sendQualifyFlow, sendContactFlow, sendBookingFlow } from './flowService.js';
 import {
   WELCOME_BODY, VALID_TOPICS,
   A1_BODY, A1_BUTTONS,
@@ -26,6 +26,7 @@ import {
   A_W_BODY, N1_BODY, N1_BUTTONS, WARM_CONFIRM, X6_BODY,
   A_C_BODY, COLD_BUTTONS, COLD_FINISH_BODY,
   X1_BODY, X1_BUTTONS, X3_STOP_BODY,
+  GENERAL_BODY, GENERAL_BUTTONS, BOOKING_CONFIRM,
   isStopKeyword, isPositiveReply,
 } from './flowMessages.js';
 
@@ -129,7 +130,11 @@ export async function handleMessage(msg) {
 
   // ── Flow submission ────────────────────────────────────────────────────
   if (type === 'flow' && flowResponse) {
-    // Contact form returns full_name/email; qualification returns size/situation/timeline/role; picker returns service
+    // Booking form: business_name / phone_number ; contact form: company + email/full_name
+    // qualification: size/situation/timeline/role ; service picker: service
+    if (flowResponse.business_name || flowResponse.phone_number || flowResponse.whatsapp_number) {
+      return handleBookingSubmission(lead, conv, flowResponse);
+    }
     if (flowResponse.email || flowResponse.full_name) {
       return handleContactSubmission(lead, conv, flowResponse);
     }
@@ -157,6 +162,7 @@ export async function handleMessage(msg) {
     case 'q4_sent':                return handleQ4(lead, conv, selectedId);
     case 'awaiting_name_company':  return handleNameCompany(lead, conv, text);
     case 'h2_sent':                return handleH2(lead, conv, selectedId);
+    case 'awaiting_booking':       return handleInvalid(lead, conv, 'booking');
     case 'awaiting_callback_time': return handleCallbackTime(lead, conv, text);
     case 'n1_sent':                return handleN1(lead, conv, selectedId);
     case 'cold_guide':             return handleCold(lead, conv, selectedId);
@@ -386,8 +392,39 @@ async function handleNameCompany(lead, conv, text) {
   return logOutbound(conv, lead.phone, H2_BODY(lead.name || 'there'));
 }
 
+// ── Booking form submission (name / business / phone / email) ────────────────
+async function handleBookingSubmission(lead, conv, resp) {
+  if (resp.full_name)     lead.name     = String(resp.full_name).slice(0, 120);
+  if (resp.business_name) lead.company  = String(resp.business_name).slice(0, 120);
+  if (resp.email)         lead.email    = String(resp.email).slice(0, 160);
+  if (resp.phone_number)  lead.altPhone = String(resp.phone_number).slice(0, 40);
+  lead.flowStep = 'booking_sent';
+  lead.status = 'Contacted';
+  lead.invalidCount = 0;
+  clearAwaiting(lead);
+  await lead.save();
+  emitLeadUpdate(lead);
+  await Conversation.updateOne({ phone: lead.phone }, { $set: { name: lead.name || undefined, company: lead.company || undefined, label: 'hot' } });
+
+  const salesRepName = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'Our team');
+  await notifySalesRep(`${HOT_SALES_BRIEF(lead, 'Booked a call — details submitted')}\nPhone: ${lead.altPhone || '—'}`);
+  await sendText(lead.phone, BOOKING_CONFIRM(lead.name, salesRepName));
+  return logOutbound(conv, lead.phone, BOOKING_CONFIRM(lead.name, salesRepName));
+}
+
 async function handleH2(lead, conv, selectedId) {
   if (selectedId === 'hot_book') {
+    // Open the booking form flow to collect details (no Calendly link)
+    let sent = false;
+    try { sent = await sendBookingFlow(lead.phone, lead.name); }
+    catch (e) { logger.warn('Booking flow send failed', { error: e.message }); }
+    if (sent) {
+      lead.flowStep = 'awaiting_booking';
+      setAwaiting(lead);
+      await lead.save();
+      return logOutbound(conv, lead.phone, '[booking form sent]');
+    }
+    // Fallback if the booking flow isn't configured — Calendly link
     const salesRepName = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'our solutions team');
     const calendlyLink = await getSetting('calendlyLink', 'https://calendly.com/cloudswift');
     lead.calendlyLink = calendlyLink;
@@ -532,6 +569,7 @@ async function resendStep(lead, conv) {
     case 'q4_sent':                return void (await sendButtons(lead.phone, Q4_BODY, Q4_BUTTONS));
     case 'awaiting_name_company':  { const ok = await sendContactFlow(lead.phone, lead.name); if (!ok) await sendText(lead.phone, H1_BODY); return; }
     case 'h2_sent':                return void (await sendH2(lead.phone, lead.name));
+    case 'awaiting_booking':       return void (await sendBookingFlow(lead.phone, lead.name));
     case 'awaiting_callback_time': return void (await sendText(lead.phone, H4_BODY));
     case 'n1_sent':                return void (await sendN1(lead.phone));
     case 'cold_guide':             return goCold(lead, conv);
@@ -542,8 +580,9 @@ async function resendStep(lead, conv) {
 // ── General/terminal-state message ───────────────────────────────────────────
 async function handleGeneral(lead, conv, preview) {
   await notifySalesRep(`💬 Message from ${lead.name || lead.phone} (${lead.score}) — "${preview}"\n→ wa.me/${lead.phone}`);
-  await sendText(lead.phone, `Thanks — our team will follow up with you shortly. You can also type "menu" to start over.`);
-  return logOutbound(conv, lead.phone, '[general ack]');
+  const img = await assetUrl('general_header');
+  await sendButtons(lead.phone, GENERAL_BODY, GENERAL_BUTTONS, img || '');
+  return logOutbound(conv, lead.phone, GENERAL_BODY);
 }
 
 // ── X3 · opt-out ─────────────────────────────────────────────────────────────
