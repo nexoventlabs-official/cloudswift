@@ -63,7 +63,8 @@
             "type": "Footer",
             "label": "Next",
             "on-click-action": {
-              "name": "data_exchange",
+              "name": "navigate",
+              "next": { "type": "screen", "name": "TIMELINE" },
               "payload": {
                 "company_size": "${data.company_size}",
                 "situation": "${form.situation}"
@@ -99,7 +100,8 @@
             "type": "Footer",
             "label": "Next",
             "on-click-action": {
-              "name": "data_exchange",
+              "name": "navigate",
+              "next": { "type": "screen", "name": "ROLE" },
               "payload": {
                 "company_size": "${data.company_size}",
                 "situation": "${data.situation}",
@@ -113,6 +115,8 @@
     {
       "id": "ROLE",
       "title": "Your role",
+      "terminal": true,
+      "success": true,
       "data": {
         "company_size": { "type": "string", "__example__": "under_100" },
         "situation": { "type": "string", "__example__": "switching" },
@@ -136,7 +140,7 @@
             "type": "Footer",
             "label": "Submit",
             "on-click-action": {
-              "name": "data_exchange",
+              "name": "complete",
               "payload": {
                 "company_size": "${data.company_size}",
                 "situation": "${data.situation}",

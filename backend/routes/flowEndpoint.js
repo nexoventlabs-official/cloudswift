@@ -20,35 +20,21 @@ function complete(token, params) {
   return { screen: 'SUCCESS', data: { extension_message_response: { params: { flow_token: token, ...params } } } };
 }
 
+// Only the SIZE screen is server-driven (so 500+ can end the flow early).
+// SITUATION -> TIMELINE -> ROLE navigate client-side; ROLE completes client-side.
 function handleDataExchange(screen, data, token) {
   const d = data || {};
-  switch (screen) {
-    case 'SIZE': {
-      const company_size = d.company_size || '';
-      // 500+ → dynamically close the flow, skipping the remaining questions
-      if (company_size === '500_plus') {
-        return complete(token, { company_size });
-      }
-      return { screen: 'SITUATION', data: { company_size } };
+  if (screen === 'SIZE') {
+    const company_size = d.company_size || '';
+    if (company_size === '500_plus') {
+      // Dynamically close the flow, skipping the remaining questions
+      return complete(token, { company_size });
     }
-    case 'SITUATION':
-      return { screen: 'TIMELINE', data: { company_size: d.company_size || '', situation: d.situation || '' } };
-    case 'TIMELINE':
-      return {
-        screen: 'ROLE',
-        data: { company_size: d.company_size || '', situation: d.situation || '', timeline: d.timeline || '' },
-      };
-    case 'ROLE':
-      return complete(token, {
-        company_size: d.company_size || '',
-        situation: d.situation || '',
-        timeline: d.timeline || '',
-        role: d.role || '',
-      });
-    default:
-      // Unknown screen — restart at SIZE
-      return { screen: 'SIZE', data: {} };
+    // Continue to the situation screen, carrying the size forward
+    return { screen: 'SITUATION', data: { company_size } };
   }
+  // Any other screen shouldn't hit the endpoint; be safe and restart at SIZE
+  return { screen: 'SIZE', data: {} };
 }
 
 // Meta posts the raw encrypted envelope here. We must respond with a base64 string.
