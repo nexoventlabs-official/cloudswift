@@ -1,0 +1,520 @@
+.section {
+  background: var(--bg);
+  min-height: 100vh;
+  padding-top: 100px;
+  padding-bottom: 100px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--page-pad);
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================================
+   TOP BANNER / HERO STRIP (QUARTER VIEWPORT HEIGHT)
+   ============================================================ */
+.topBannerStrip {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(150, 196, 255, 0.2);
+  background: linear-gradient(135deg, rgba(14, 34, 72, 0.75) 0%, rgba(6, 16, 36, 0.95) 100%);
+  box-shadow: 0 20px 50px rgba(0, 8, 28, 0.4);
+  margin-bottom: 56px;
+  min-height: clamp(260px, 28vh, 360px);
+  padding: clamp(28px, 4vw, 44px) clamp(28px, 4vw, 48px);
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 40px;
+}
+
+.bannerRibbonBg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.ribbonSvg {
+  position: absolute;
+  width: 130%;
+  height: 180%;
+  top: -40%;
+  left: -15%;
+  opacity: 0.75;
+}
+
+.bannerLeft {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 640px;
+}
+
+.bannerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: #9ae8ff;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.bannerTagline {
+  font-size: clamp(1.25rem, 2.2vw, 1.65rem);
+  font-weight: 300;
+  line-height: 1.4;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.singleBannerImageWrap {
+  position: relative;
+  z-index: 1;
+  width: clamp(240px, 24vw, 360px);
+  height: clamp(180px, 20vh, 240px);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(150, 200, 255, 0.25);
+  box-shadow: 0 16px 40px rgba(0, 8, 28, 0.5);
+  flex-shrink: 0;
+  background: #0a1428;
+  justify-self: end;
+  transition: transform 0.35s ease, border-color 0.35s ease;
+}
+
+.singleBannerImageWrap:hover {
+  transform: translateY(-4px);
+  border-color: rgba(160, 220, 255, 0.5);
+}
+
+.singleBannerImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ============================================================
+   PAGE HERO / INTRO AREA (PRESERVED)
+   ============================================================ */
+.hero {
+  margin-bottom: 48px;
+  max-width: 900px;
+}
+
+.heroBadge {
+  margin-bottom: 16px;
+  display: inline-flex;
+}
+
+.heroTitle {
+  font-size: clamp(2.8rem, 6vw, 4.5rem);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: #ffffff;
+  margin: 0 0 16px;
+}
+
+.heroDesc {
+  font-size: 1.1rem;
+  color: rgba(210, 228, 245, 0.75);
+  line-height: 1.65;
+  font-weight: 300;
+  margin: 0;
+}
+
+/* ============================================================
+   LANDING VIEW: 8-INDUSTRY CARD GRID (AVANADE STYLE)
+   ============================================================ */
+.landingGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.industryCard {
+  background: linear-gradient(180deg, rgba(16, 36, 72, 0.7) 0%, rgba(8, 18, 40, 0.9) 100%);
+  border: 1px solid rgba(150, 196, 255, 0.16);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.35s ease,
+              box-shadow 0.35s ease;
+  box-shadow: 0 12px 30px rgba(0, 8, 24, 0.25);
+  position: relative;
+}
+
+.industryCard:hover {
+  transform: translateY(-6px);
+  border-color: rgba(160, 220, 255, 0.45);
+  box-shadow: 0 20px 40px rgba(0, 12, 36, 0.45), 0 0 0 1px rgba(120, 200, 255, 0.15);
+}
+
+.industryCardImgWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #0a1428;
+}
+
+.industryCardImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.industryCard:hover .industryCardImg {
+  transform: scale(1.08);
+}
+
+.industryCardOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(8, 18, 40, 0.6) 70%,
+    rgba(8, 18, 40, 0.95) 100%
+  );
+  pointer-events: none;
+}
+
+.industryCardContent {
+  padding: 20px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-grow: 1;
+  justify-content: space-between;
+}
+
+.industryCardTitle {
+  font-size: 1.28rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0;
+}
+
+.industryCardCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: #9ae8ff;
+  letter-spacing: 0.02em;
+  transition: gap 0.25s ease, color 0.25s ease;
+}
+
+.industryCard:hover .industryCardCta {
+  gap: 10px;
+  color: #ffffff;
+}
+
+/* ============================================================
+   DETAIL VIEW TOP BAR / NAVIGATION BACK
+   ============================================================ */
+.detailTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 28px;
+  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(150, 200, 255, 0.22);
+  background: rgba(80, 160, 230, 0.08);
+  color: #9ae8ff;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.25s ease;
+}
+
+.backBtn:hover {
+  background: rgba(80, 160, 230, 0.2);
+  border-color: rgba(160, 220, 255, 0.45);
+  color: #ffffff;
+  transform: translateX(-3px);
+}
+
+.breadcrumbText {
+  font-size: 0.86rem;
+  color: rgba(210, 228, 245, 0.6);
+}
+
+.breadcrumbActive {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* ============================================================
+   TWO-COLUMN DETAIL VIEW (PRESERVED)
+   ============================================================ */
+.twoColGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 56px;
+  align-items: start;
+  width: 100%;
+}
+
+/* --- LEFT COLUMN --- */
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.industryHeading {
+  font-size: clamp(2.2rem, 3.8vw, 3.2rem);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: #ffffff;
+  margin: 0;
+}
+
+.leftSubHeading {
+  font-size: 1.18rem;
+  font-weight: 500;
+  color: #9ae8ff;
+  line-height: 1.35;
+  margin: 4px 0 8px;
+}
+
+.subTopicsList {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subTopicItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(210, 228, 245, 0.8);
+  font-weight: 300;
+}
+
+.subTopicDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9ae8ff;
+  margin-top: 9px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.leftCtaWrap {
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.consultLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #9ae8ff;
+  text-decoration: none;
+  transition: gap 0.25s ease, color 0.25s ease;
+}
+
+.consultLink:hover {
+  gap: 12px;
+  color: #ffffff;
+}
+
+/* --- RIGHT COLUMN --- */
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  width: 100%;
+}
+
+.rightSubHeading {
+  font-size: 1.18rem;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.35;
+  margin: 0 0 4px;
+}
+
+.cardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  width: 100%;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  padding: 26px 30px;
+  min-height: 155px;
+  background: linear-gradient(180deg, rgba(16, 36, 72, 0.75) 0%, rgba(8, 18, 40, 0.9) 100%);
+  border: 1px solid rgba(150, 196, 255, 0.16);
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(0, 8, 24, 0.28);
+  text-decoration: none;
+  color: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.35s ease,
+              box-shadow 0.35s ease;
+}
+
+.card:hover {
+  transform: translateX(6px);
+  border-color: rgba(160, 220, 255, 0.45);
+  box-shadow: 0 18px 44px rgba(0, 12, 36, 0.4), 0 0 0 1px rgba(120, 200, 255, 0.1);
+}
+
+.cardThumbWrap {
+  position: relative;
+  width: 210px;
+  height: 140px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0a1428;
+  border: 1px solid rgba(150, 196, 255, 0.16);
+  flex-shrink: 0;
+}
+
+.cardThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card:hover .cardThumb {
+  transform: scale(1.08);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.cardTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.cardDesc {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: rgba(210, 228, 245, 0.76);
+  font-weight: 300;
+  margin: 0;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN
+   ============================================================ */
+@media (max-width: 1200px) {
+  .landingGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .landingGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .twoColGrid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+}
+
+@media (max-width: 768px) {
+  .topBannerStrip {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px 20px;
+    gap: 20px;
+  }
+  .bannerImageWrap {
+    width: 100%;
+    height: 160px;
+  }
+}
+
+@media (max-width: 640px) {
+  .landingGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .card {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+  .cardThumbWrap {
+    width: 100%;
+    height: 140px;
+  }
+}

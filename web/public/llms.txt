@@ -1,0 +1,102 @@
+# CloudSwift Technologies — AI Grounding Document
+# https://oncloudswift.com/llms.txt
+# Last updated: 2025-09-26
+
+## Company
+
+Name: CloudSwift Technologies Pvt. Ltd.
+Short name: CloudSwift
+Founded: 2023
+Headquarters: Bengaluru, Karnataka, India
+Other offices: Mumbai, India; Lewes, Delaware, USA
+Website: https://oncloudswift.com
+Tagline: Stop Wasting Cloud Spend. Start Scaling Securely.
+
+## What CloudSwift Does
+
+CloudSwift is a Microsoft Azure Expert MSP (Managed Service Provider) that designs,
+migrates, secures, and operates cloud infrastructure for Indian startups, SMBs, and
+enterprises. Core offering areas:
+
+1. Managed Azure — landing zones, identity, cost optimisation, operations, monitoring
+2. Cloud Migration — 6R assessments, wave planning, workload lift-and-shift or modernisation
+3. Microsoft 365 — deployment, governance, security hardening, Teams, Exchange, SharePoint
+4. Dynamics 365 — implementation and support for ERP and CRM
+5. Managed Security — SIEM, endpoint, compliance, Azure Defender
+6. AI Services — readiness assessments, enterprise ChatGPT integrations, intelligent agents,
+   document intelligence, MLOps, generative AI workflows
+7. Multi-cloud — AWS and Google Cloud alongside Azure
+8. IT Help Desk — 24/7 managed support, 15-minute P1 response SLA
+
+## Credentials and Certifications
+
+- Microsoft Azure Expert MSP (fewer than 100 partners globally hold this designation)
+- Microsoft Solutions Partner
+- AWS Partner Network member
+- Google Cloud Partner
+- Oracle Cloud MSP
+- ISO 27001 aligned
+- SOC 2 Type II
+
+## Service Statistics
+
+- 450+ enterprise clients served across India, the Gulf, and the US
+- 200+ cloud migrations completed
+- 99.97% uptime SLA
+- 15-minute critical (P1) incident response, 24/7/365
+- ~87% first-call resolution rate
+
+## Target Clients
+
+Primary: Indian startups, growing SMBs, and mid-market enterprises (50–2000 employees)
+who run or plan to run workloads on Microsoft Azure or Microsoft 365.
+Also serves Gulf (UAE) and North American clients.
+Industries: SaaS, manufacturing, BFSI, healthcare, logistics, government-adjacent.
+
+## Key Pages
+
+- Homepage: https://oncloudswift.com
+- Managed Cloud services: https://oncloudswift.com/managed-cloud
+- AI Services: https://oncloudswift.com/ai-services
+- Enterprise Services: https://oncloudswift.com/services
+- Platform Solutions (Azure, M365, D365, Power BI): https://oncloudswift.com/solutions
+- Industries: https://oncloudswift.com/industries
+- About: https://oncloudswift.com/about
+- Blog: https://oncloudswift.com/blog
+- Contact: https://oncloudswift.com/contact
+
+## Contact
+
+India email: hello.in@oncloudswift.com
+India enquiries: enquiry.in@oncloudswift.com
+India phone: +91 98455 70066 / +91 91487 06809
+US email: hello.us@oncloudswift.co
+US phone: +1 (330) 516-7590
+WhatsApp: https://wa.me/919148706809
+Free consultation: https://calendly.com/havil-richard-oncloudswift/30min
+LinkedIn: https://www.linkedin.com/company/cloudswift-technologies-pvt-ltd
+
+## Frequently Asked Questions
+
+Q: What is an Azure Expert MSP?
+A: The Azure Expert MSP designation is Microsoft's highest-tier partner accreditation for
+managed cloud services. Fewer than 100 partners hold it globally. It requires third-party
+audits of technical capability, support processes, and customer outcomes.
+
+Q: How fast does CloudSwift respond to incidents?
+A: Critical (P1) incidents receive an engineer response within 15 minutes, around the
+clock, 365 days a year.
+
+Q: Does CloudSwift work with startups or only large enterprises?
+A: CloudSwift works with Indian startups, SMBs, and mid-market companies. The managed
+Azure and Microsoft 365 offerings are specifically designed to give smaller companies
+enterprise-grade operations without building an in-house IT team.
+
+Q: What regions does CloudSwift serve?
+A: Primarily India (Bengaluru and Mumbai offices), with clients across the Gulf (UAE) and
+North America (US entity in Delaware).
+
+Q: How is CloudSwift different from a generic IT provider?
+A: CloudSwift specialises exclusively in cloud and Microsoft platforms, holds the Azure
+Expert MSP designation, and delivers under defined SLAs (99.97% uptime, 15-min P1
+response). It is not a generalist IT services company.

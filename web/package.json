@@ -1,0 +1,31 @@
+{
+  "name": "nyro-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "cross-env NEXT_TURBOPACK=false next dev",
+    "devw": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "optimize-images": "node scripts/optimize-images.mjs --input ./images --output ./optimized --heroes-all",
+    "optimize-images:batch": "node scripts/optimize-images.mjs --input ./images --output ./optimized --heroes-all --batch"
+  },
+  "dependencies": {
+    "framer-motion": "^13.1.0",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "resend": "^6.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "sharp": "^0.34.5",
+    "typescript": "^5"
+  }
+}

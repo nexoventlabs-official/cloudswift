@@ -1,0 +1,152 @@
+.cats {
+  position: relative;
+  z-index: 1;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 0 var(--page-pad) 40px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(150, 200, 255, 0.2);
+  background: rgba(80, 160, 230, 0.08);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(190, 220, 255, 0.78);
+  text-decoration: none;
+  transition:
+    color 0.25s ease,
+    border-color 0.25s ease,
+    background 0.25s ease;
+}
+
+.catLink:hover {
+  color: #fff;
+  border-color: rgba(160, 220, 255, 0.42);
+  background: rgba(80, 160, 230, 0.16);
+}
+
+.catLinkCount {
+  font-size: 0.66rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(154, 232, 255, 0.7);
+}
+
+.group {
+  scroll-margin-top: 100px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 0 var(--page-pad) 22px;
+}
+
+.groupCopy {
+  max-width: 46rem;
+}
+
+.catKicker {
+  display: flex;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(154, 232, 255, 0.55);
+}
+
+.catIndex {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(154, 232, 255, 0.55);
+  margin-right: 12px;
+}
+
+.catTitle {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.catLede {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(210, 228, 245, 0.72);
+}
+
+.catCount {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+  white-space: nowrap;
+}
+
+.grid {
+  padding-bottom: 56px;
+}
+
+.cardImgContain {
+  position: relative;
+  width: 100%;
+  aspect-ratio: auto;
+  height: auto;
+  overflow: hidden;
+  background: transparent;
+}
+
+.cardImgContain :global(img) {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: none;
+}
+
+.grid :global(.card:hover) .cardImgContain :global(img) {
+  transform: none;
+}
+
+.group:last-child .grid {
+  padding-bottom: 80px;
+}
+
+@media (max-width: 768px) {
+  .cats {
+    padding-bottom: 28px;
+    gap: 6px;
+  }
+
+  .groupHead {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding-bottom: 14px;
+  }
+
+  .grid {
+    padding-bottom: 40px;
+  }
+
+  .group:last-child .grid {
+    padding-bottom: 64px;
+  }
+}

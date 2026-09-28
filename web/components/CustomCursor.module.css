@@ -1,0 +1,64 @@
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  translate: -50% -50%;
+  opacity: 0;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s ease,
+    background 0.35s ease,
+    border-radius 0.35s ease;
+  mix-blend-mode: difference;
+}
+
+.visible {
+  opacity: 1;
+}
+
+.default {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #f2ffff 0%,
+    #f8fdda 18%,
+    #f9e3fe 38%,
+    #cbd0ff 58%,
+    #b5ffd7 78%,
+    #bdeaff 100%
+  );
+  box-shadow: 0 0 14px rgba(249, 227, 254, 0.4);
+  mix-blend-mode: normal;
+}
+
+.link {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+  mix-blend-mode: difference;
+}
+
+.view {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: #fff;
+  mix-blend-mode: normal;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.viewLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #0a0a0c;
+}

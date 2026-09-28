@@ -1,0 +1,149 @@
+.section {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg);
+  padding: 60px 30px;
+  overflow: visible;
+}
+
+.watermark {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(100% - 60px, 1800px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  line-height: 0;
+  mix-blend-mode: lighten;
+  transform-origin: 50% 80%;
+  will-change: transform;
+}
+
+.watermarkImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  opacity: 1;
+}
+
+.header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 40px;
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-soft);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+.stack {
+  position: relative;
+  z-index: 2;
+  max-width: 1800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.stickyPanel {
+  position: sticky;
+  top: 160px;
+  display: flex;
+  justify-content: center;
+  padding-bottom: 100px;
+  min-height: 60vh;
+}
+
+.card {
+  background: #f0efe8;
+  border-radius: 16px;
+  padding: 24px;
+  width: min(570px, 100%);
+  color: var(--text-card);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  will-change: transform;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  transform-origin: center center;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clientLogo {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.logoDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: conic-gradient(#7b4fd8, #d4479a, #e07030, #7b4fd8);
+}
+
+.date {
+  font-size: 0.875rem;
+  color: var(--text-meta);
+}
+
+.quote {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text-card);
+  font-weight: 400;
+}
+
+.author {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.authorName {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-card);
+}
+
+.authorTitle {
+  font-size: 0.825rem;
+  color: var(--text-meta);
+}
+
+@media (max-width: 1199.98px) {
+  .card {
+    width: min(525px, 100%);
+  }
+}
+
+@media (max-width: 809.98px) {
+  .section {
+    padding: 60px 16px;
+  }
+  .stickyPanel {
+    top: 120px;
+    padding-bottom: 70px;
+    min-height: 50vh;
+  }
+  .card {
+    width: 100%;
+  }
+}

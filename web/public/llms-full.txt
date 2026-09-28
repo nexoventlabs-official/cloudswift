@@ -1,0 +1,108 @@
+# CloudSwift Technologies — Full Company & Services Profile
+
+## Company Overview
+- Legal name: CloudSwift Technologies Pvt. Ltd.
+- Founded: 2023
+- Headquarters: Bengaluru, India
+- Offices: Mumbai, India; Lewes, Delaware, USA
+- Designation: Microsoft Azure Expert MSP (one of fewer than 100 globally)
+- Partners: Microsoft Solutions Partner, AWS Partner, Google Cloud Partner, Oracle Cloud MSP
+- Certifications: ISO 27001, SOC 2 Type II
+- Website: https://oncloudswift.com
+- Contact India: hello.in@oncloudswift.com / enquiry.in@oncloudswift.com
+- Contact US: hello.us@oncloudswift.co / sales.us@oncloudswift.co
+- Phone India: +91 98455 70066, +91 91487 06809
+- Phone US: +1 (330) 516-7590
+- WhatsApp: https://wa.me/919148706809
+
+## What CloudSwift Does
+CloudSwift architects, migrates, secures, and operates enterprise cloud estates for businesses across India, the Middle East, and North America. The company specialises in Microsoft Azure but also manages AWS, GCP, Oracle Cloud, Microsoft 365, and Dynamics 365 under a single SLA.
+
+Tagline: "Stop Wasting Cloud Spend. Start Scaling Securely."
+
+## Scale & Track Record
+- 450+ enterprise clients
+- 200+ cloud migrations completed
+- 99.97% uptime SLA
+- 15-minute critical (P1) incident response, 24/7/365
+- ~87% first-call resolution rate
+
+## Service Catalog
+
+### 1. Enterprise Services
+Full catalog at: https://oncloudswift.com/services
+Includes: cloud strategy & advisory, infrastructure modernisation, application migration, DevOps & CI/CD, managed security, workplace transformation, data & analytics, network management, disaster recovery, IT helpdesk.
+
+### 2. Managed Cloud
+Full catalog at: https://oncloudswift.com/managed-cloud
+Includes:
+- Microsoft Azure managed services (VMs, AKS, DevOps pipelines, Security & Compliance Centre)
+- Amazon Web Services (EC2 & S3, Lambda serverless, AWS Security, Database Services)
+- Google Cloud Platform (GKE, BigQuery, AI/ML Services, Cloud Run)
+- Microsoft 365 management
+- Oracle Cloud MSP
+- Private cloud & data centre
+- Managed security operations
+
+### 3. AI Services
+Full catalog at: https://oncloudswift.com/ai-services
+Includes:
+- AI Readiness Assessment & Strategy Roadmap
+- Intelligent Agents (customer support, HR, sales, enterprise knowledge base)
+- Enterprise Chatbots
+- Generative AI Workflows & ChatGPT Enterprise Integration
+- AI MVP Development
+- AI SaaS Product Development
+- Multi-Agent Systems
+- AI Model Deployment & Monitoring (MLOps)
+- AI Infrastructure
+- AI Workflow Automation
+- Document Intelligence
+
+### 4. Platform Solutions
+Full catalog at: https://oncloudswift.com/solutions
+Includes: Microsoft Azure, Amazon Web Services, Google Cloud Platform, Dynamics 365, Microsoft 365, Power BI.
+
+## Key Differentiators
+1. Azure Expert MSP — highest tier in the Microsoft partner network, held by fewer than 100 partners globally.
+2. India-timezone operations — critical incidents answered in 15 minutes, not escalated overseas.
+3. Full-stack cloud scope — Azure, AWS, GCP, Oracle, M365, Dynamics 365, and AI under one team.
+4. Built for startups and scale-ups — not just large enterprises.
+5. Proven track record — 450+ clients, 200+ migrations, since 2023.
+
+## Industries Served
+- SaaS Startups
+- Fintech and BFSI (Banking, Financial Services, Insurance)
+- Healthcare SaaS
+- Manufacturing
+- Retail and D2C
+- Professional Services
+
+## Geographies
+- India (primary): Bengaluru, Mumbai, pan-India
+- Middle East / Gulf
+- North America (US operations from Lewes, Delaware)
+
+## Frequently Asked Questions
+
+Q: What makes CloudSwift a trusted cloud partner?
+A: CloudSwift holds the Microsoft Azure Expert MSP accreditation — the highest tier in the Microsoft partner network, held by fewer than 100 partners globally — alongside AWS Partner, Google Cloud Partner, Oracle Cloud MSP, ISO 27001, and SOC 2 Type II certifications.
+
+Q: How quickly does CloudSwift respond to critical incidents?
+A: Critical (P1) incidents receive an engineer response within 15 minutes, 24/7/365, with a 99.97% uptime SLA and ~87% first-call resolution.
+
+Q: Which regions does CloudSwift serve?
+A: Headquartered in Bengaluru with offices in Mumbai and Delaware (US). Clients across India, the Middle East (Gulf), and North America.
+
+Q: Does CloudSwift work with startups?
+A: Yes. CloudSwift is specifically built for Indian startups, SMBs, and mid-market companies — not just large enterprises.
+
+Q: How do I contact CloudSwift?
+A: Email hello.in@oncloudswift.com, call +91 98455 70066, or book a consultation at https://calendly.com/havil-richard-oncloudswift/30min
+
+## Social & Community
+- LinkedIn: https://www.linkedin.com/company/cloudswift-technologies-pvt-ltd
+- X (Twitter): https://x.com/CloudSwiftTech
+- Instagram: https://www.instagram.com/cloudswift_technologies/
+- YouTube: https://www.youtube.com/@CloudSwiftTechnologies
+- GitHub: https://github.com/Cloudswift-Technologies-Pvt-Ltd

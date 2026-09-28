@@ -1,0 +1,298 @@
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 10px 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.navHidden {
+  pointer-events: none;
+}
+
+.navInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  min-height: 54px;
+  pointer-events: auto;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.logoImg {
+  height: 44px;
+  width: auto;
+  max-width: min(240px, 58vw);
+  object-fit: contain;
+  object-position: left center;
+  mix-blend-mode: lighten;
+}
+
+.menuBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 54px;
+  padding: 14px 16px;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #fff;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.5);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.5);
+  font-family: inherit;
+  letter-spacing: 0;
+  flex-shrink: 0;
+  transition: opacity 0.3s ease;
+}
+
+.menuBtn:hover {
+  opacity: 0.7;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0 40px;
+}
+
+.overlayGrain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.09;
+  background-image: url("/images/rR6HYXBrMmX4cRpXfXUOvpvpB0.png");
+  background-size: 180px 180px;
+}
+
+.overlayTop {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 30px;
+  height: 74px;
+  flex-shrink: 0;
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 54px;
+  color: #fff;
+  background: none;
+  border: none;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.5);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.3s ease;
+}
+
+.closeBtn:hover {
+  opacity: 0.7;
+}
+
+.overlayNav {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.overlayRow {
+  width: 100%;
+}
+
+.overlayLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 58px;
+  padding: 0 30px;
+  overflow: hidden;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+
+.overlayRow:first-child .overlayLink {
+  border-top: 0.5px solid rgba(255, 255, 255, 0.5);
+}
+
+.overlayLabel {
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.5;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+}
+
+.ticker {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.overlayLink:hover .ticker,
+.overlayLink:focus-visible .ticker {
+  opacity: 1;
+}
+
+.overlayLink:hover .overlayLabel,
+.overlayLink:focus-visible .overlayLabel {
+  opacity: 0;
+}
+
+.tickerTrack {
+  display: flex;
+  align-items: center;
+  gap: 46px;
+  white-space: nowrap;
+  animation: ticker 18s linear infinite;
+  padding-left: 30px;
+}
+
+.tickerItem {
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.5;
+  color: #0a0a0c;
+  flex-shrink: 0;
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.overlaySocials {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 42px;
+  padding: 28px 30px 8px;
+  flex-shrink: 0;
+}
+
+.overlaySocials a {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  filter: brightness(0) invert(1);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.overlaySocials a img {
+  width: 22px;
+  height: 22px;
+}
+
+.overlaySocials a:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+@media (max-width: 809.98px) {
+  .navInner,
+  .overlayTop {
+    padding: 0 16px;
+  }
+
+  .logoImg {
+    height: 36px;
+    max-width: min(180px, 62vw);
+  }
+
+  .overlayLink {
+    height: 64px;
+    padding: 0 16px;
+  }
+
+  .overlayLabel,
+  .tickerItem {
+    font-size: 28px;
+  }
+
+  .tickerTrack {
+    padding-left: 16px;
+    gap: 32px;
+  }
+
+  .overlaySocials {
+    gap: 28px;
+    padding: 20px 16px 4px;
+  }
+}
+
+@media (max-width: 479.98px) {
+  .logoImg {
+    height: 32px;
+    max-width: 150px;
+  }
+
+  .overlayLink {
+    height: 56px;
+  }
+
+  .overlayLabel,
+  .tickerItem {
+    font-size: 22px;
+  }
+
+  .menuBtn,
+  .closeBtn {
+    width: 72px;
+    height: 48px;
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tickerTrack {
+    animation: none;
+  }
+}

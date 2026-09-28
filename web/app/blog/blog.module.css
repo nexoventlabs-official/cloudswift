@@ -1,0 +1,109 @@
+.empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 300;
+  grid-column: 1 / -1;
+  padding: 40px 0;
+}
+
+.excerpt {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+  font-weight: 300;
+  max-width: 42ch;
+}
+
+.article {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 30px 100px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  margin-bottom: 24px;
+}
+
+.cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  margin-bottom: 40px;
+}
+
+.title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 24px;
+}
+
+.body {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 300;
+  line-height: 1.75;
+  font-size: 1.05rem;
+}
+
+.body :global(h2) {
+  color: #fff;
+  font-weight: 400;
+  font-size: 1.4rem;
+  margin: 2rem 0 0.75rem;
+}
+
+.body :global(ol),
+.body :global(ul) {
+  padding-left: 1.25rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.body :global(li) {
+  margin-bottom: 0.4rem;
+}
+
+.related {
+  margin-top: 80px;
+  padding-top: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.relatedTitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.relatedList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.relatedLink {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 300;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 8px;
+  width: fit-content;
+}
+
+@media (max-width: 809.98px) {
+  .article {
+    padding: 24px 16px 80px;
+  }
+}

@@ -1,0 +1,374 @@
+﻿/* ================================================================
+   OfferingsMarquee — Section + Marquee layout + Card styles
+   ================================================================ */
+
+/* ── Section wrapper ── */
+.section {
+  position: relative;
+  background: var(--bg);
+  padding: 72px 0 80px;
+  overflow: hidden;
+}
+
+/* ── Section header (centered) ── */
+.header {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0 var(--page-pad) 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.6vw, 2.8rem);
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  color: #fff;
+  line-height: 1.15;
+}
+
+.sectionSubtitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 300;
+  color: var(--text-soft);
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+/* ── Marquee viewport — clips overflow, adds edge fades ── */
+.marqueeViewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  /* Allow vertical overflow so card box-shadows show */
+  padding: 12px 0 20px;
+}
+
+/* Edge gradient masks so cards fade in/out cleanly */
+.fadeLeft,
+.fadeRight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.fadeLeft {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    var(--bg) 0%,
+    transparent 100%
+  );
+}
+
+.fadeRight {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    var(--bg) 0%,
+    transparent 100%
+  );
+}
+
+/* ── Marquee track — the scrolling row ── */
+.marqueeTrack {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  width: max-content;
+  padding: 0 20px;
+
+  /* Keyframe: scrolls one full set width (9 cards × ~300px + gaps).
+     --marquee-duration controls speed — slower = more ticker-tape feel. */
+  animation: marqueeScroll 45s linear infinite;
+  animation-play-state: running;
+}
+
+/* Pause on hover is handled via JS setting animationPlayState.
+   Also support CSS-only pause via parent hover in case JS is slow: */
+.marqueeViewport:hover .marqueeTrack {
+  animation-play-state: paused;
+}
+
+@keyframes marqueeScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* Move exactly one full "set" of 9 cards to the left.
+       Card width 280px + gap 20px = 300px × 9 = 2700px */
+    transform: translateX(calc(-300px * 9));
+  }
+}
+
+/* ── Card ── */
+.card {
+  flex: 0 0 280px;
+  width: 280px;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px 20px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(100, 180, 255, 0.14);
+  background: linear-gradient(
+    145deg,
+    rgba(18, 48, 86, 0.95) 0%,
+    rgba(11, 31, 68, 0.95) 100%
+  );
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+  user-select: none;
+}
+
+.card:hover {
+  border-color: rgba(100, 200, 255, 0.35);
+  box-shadow:
+    0 8px 36px rgba(0, 120, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-3px);
+}
+
+/* ── Badge pill ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(130, 210, 255, 0.3);
+  background: rgba(80, 160, 230, 0.1);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(160, 220, 255, 0.88);
+  white-space: nowrap;
+}
+
+/* ── Icon box + ambient float animation ── */
+.iconBox {
+  position: relative;
+  margin: 4px 0 2px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(30, 80, 160, 0.28);
+  border: 1px solid rgba(100, 180, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* The icon itself floats up and down — NO rotation */
+.iconWrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(150, 220, 255, 0.92);
+  animation: iconFloat 3.6s ease-in-out infinite;
+}
+
+/* Soft radial glow behind the icon */
+.iconGlow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at 50% 60%,
+    rgba(80, 180, 255, 0.22) 0%,
+    transparent 70%
+  );
+  animation: iconPulse 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Float animation — translateY only, no rotate */
+@keyframes iconFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Glow pulse — opacity and scale only */
+@keyframes iconPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+/* ── Heading ── */
+.heading {
+  margin: 0;
+  font-size: 0.97rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+/* ── Underline accent ── */
+.underline {
+  display: block;
+  width: 28px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(80, 180, 255, 0.9) 0%,
+    rgba(80, 180, 255, 0.2) 100%
+  );
+  margin-top: -2px;
+  flex-shrink: 0;
+}
+
+/* ── Description ── */
+.description {
+  margin: 0;
+  font-size: 0.83rem;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--text-soft);
+  flex-grow: 1;
+}
+
+/* ── Star trust line ── */
+.trustLine {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: rgba(200, 230, 255, 0.72);
+  line-height: 1.4;
+}
+
+/* ── CTA button ── */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: rgba(50, 130, 220, 0.22);
+  border: 1px solid rgba(80, 160, 255, 0.35);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(180, 225, 255, 0.95);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+  white-space: nowrap;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+}
+
+.card:hover .cta {
+  background: rgba(50, 130, 220, 0.42);
+  border-color: rgba(100, 180, 255, 0.6);
+  color: #fff;
+}
+
+/* ── Sub-text ── */
+.subText {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  text-align: center;
+  width: 100%;
+  line-height: 1.4;
+}
+
+/* ================================================================
+   RESPONSIVE ADJUSTMENTS
+   ================================================================ */
+
+@media (max-width: 768px) {
+  .section {
+    padding: 56px 0 60px;
+  }
+
+  .header {
+    padding-bottom: 36px;
+  }
+
+  .sectionTitle {
+    font-size: clamp(1.5rem, 6vw, 2rem);
+  }
+
+  .sectionSubtitle {
+    font-size: 0.9rem;
+  }
+
+  /* Slightly narrower cards on mobile */
+  .card {
+    flex: 0 0 248px;
+    width: 248px;
+    min-height: 350px;
+    padding: 18px 16px 16px;
+  }
+
+  /* Adjust keyframe distance for narrower cards */
+  @keyframes marqueeScroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      /* 248px + 20px gap = 268px × 9 cards */
+      transform: translateX(calc(-268px * 9));
+    }
+  }
+
+  .fadeLeft,
+  .fadeRight {
+    width: 60px;
+  }
+}
+
+@media (max-width: 479px) {
+  .card {
+    flex: 0 0 228px;
+    width: 228px;
+    min-height: 330px;
+  }
+
+  @keyframes marqueeScroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      /* 228px + 20px gap = 248px × 9 cards */
+      transform: translateX(calc(-248px * 9));
+    }
+  }
+}

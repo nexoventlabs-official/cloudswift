@@ -9,6 +9,7 @@ import { Server as SocketServer } from 'socket.io';
 
 import webhookRouter from './routes/webhook.js';
 import flowEndpointRouter from './routes/flowEndpoint.js';
+import contactLeadRouter from './routes/contactLead.js';
 import leadsRouter from './routes/leads.js';
 import crmRouter from './routes/crm.js';
 import adminRouter from './routes/admin.js';
@@ -98,6 +99,7 @@ app.get('/api/health', (req, res) => res.json(buildHealthReport()));
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/whatsapp/webhook', webhookRouter);
 app.use('/api/whatsapp/flow-endpoint', flowEndpointRouter);
+app.use('/api/public/contact', contactLeadRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/crm', crmRouter);
 app.use('/api/admin', adminRouter);

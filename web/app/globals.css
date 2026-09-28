@@ -1,0 +1,163 @@
+/* ============================================================
+   NYRO — Global Design System (matched to nyro.framer.website)
+   Exact Framer tokens:
+   - primary: #fff
+   - soft/labels: rgba(255,255,255,0.7)
+   - muted/"for"/nums: rgba(255,255,255,0.5) / #ffffff80
+   - bg: #0b1f44 (azure navy)
+   ============================================================ */
+
+:root {
+  --bg: #0b1f44;
+  --bg-hero: #0b1f44;
+  --bg-2: #123056;
+  --surface: #123056;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.5);
+
+  --text-primary: #ffffff;
+  --text-soft: rgba(255, 255, 255, 0.7);
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-faint: rgba(255, 255, 255, 0.35);
+  --text-dark: #010101;
+  --text-card: #0a0a0c;
+  --text-meta: rgb(96, 97, 99);
+
+  --accent-pink: #f9e3fe;
+  --accent-mint: #b5ffd7;
+  --accent-sky: #bdeaff;
+  --accent-lilac: #cbd0ff;
+  --accent-cream: #f8fdda;
+
+  --font-sans: var(--font-manrope), "Manrope", sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-full: 999px;
+
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --page-pad: 30px;
+  --max-w: 1400px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  word-wrap: break-word;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* --- Section Badge / Pill --- */
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 0.7px solid rgba(255, 255, 255, 0.5);
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(25px);
+}
+
+.section-badge .sparkle {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  flex-shrink: 0;
+  background-image: url("/images/sparkle.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* --- Link Button --- */
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  padding-bottom: 4px;
+  transition: border-color var(--transition), gap var(--transition);
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+  gap: 10px;
+}
+
+.link-btn .arrow {
+  font-size: 0.85rem;
+  transition: transform var(--transition);
+}
+
+.link-btn:hover .arrow {
+  transform: translate(2px, -2px);
+}
+
+/* Hide native cursor when custom cursor is active */
+html.has-custom-cursor,
+html.has-custom-cursor * {
+  cursor: none !important;
+}
+
+@media (max-width: 809.98px) {
+  :root {
+    --page-pad: 16px;
+  }
+}
+
+@media (max-width: 479.98px) {
+  :root {
+    --page-pad: 12px;
+  }
+}

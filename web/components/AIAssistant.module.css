@@ -1,0 +1,147 @@
+.root {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.fab,
+.panel,
+.form,
+.close,
+.send {
+  pointer-events: auto;
+}
+
+.fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 0.7px solid rgba(255, 255, 255, 0.5);
+  background: rgba(11, 31, 68, 0.85);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(20px);
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.fab:hover {
+  opacity: 0.85;
+}
+
+.panel {
+  width: min(360px, calc(100vw - 32px));
+  height: min(480px, 70vh);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 0.7px solid rgba(255, 255, 255, 0.5);
+  background: rgba(11, 31, 68, 0.92);
+  backdrop-filter: blur(24px);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.title {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.close,
+.send {
+  background: none;
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.close:hover,
+.send:hover {
+  opacity: 1;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.userBubble,
+.botBubble {
+  max-width: 90%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+.userBubble {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.botBubble {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.input {
+  flex: 1;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+@media (max-width: 809.98px) {
+  .root {
+    right: 12px;
+    bottom: 12px;
+  }
+  .panel {
+    width: min(360px, calc(100vw - 24px));
+    height: min(480px, calc(100dvh - 88px));
+  }
+}

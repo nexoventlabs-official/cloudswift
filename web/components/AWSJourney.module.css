@@ -1,0 +1,46 @@
+.journey {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(circle at 50% 18%, rgba(45, 138, 194, 0.24), transparent 36%), linear-gradient(145deg, #07182f, #102d52 55%, #071426);
+}
+
+.journeyGlow { position: absolute; inset: 0; z-index: -1; opacity: 0.28; background-image: linear-gradient(rgba(143, 214, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(143, 214, 255, 0.08) 1px, transparent 1px); background-size: 38px 38px; mask-image: radial-gradient(circle at center, black 18%, transparent 78%); }
+
+.launch { position: absolute; left: 50%; top: 3%; z-index: 3; display: grid; place-items: center; gap: 4px; transform: translateX(-50%); color: #d9f7ff; }
+.launchIcon { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid rgba(174, 231, 255, 0.72); border-radius: 50%; background: linear-gradient(145deg, #246d9c, #092c54); box-shadow: 0 0 20px rgba(54, 180, 255, 0.3), inset 0 1px rgba(255, 255, 255, 0.35); font-size: 1.35rem; line-height: 1; }
+.launchLabel { color: rgba(193, 231, 249, 0.66); font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+
+.track { position: absolute; left: 50%; top: 12%; bottom: 5%; z-index: 1; width: 3px; transform: translateX(-50%); background: linear-gradient(to bottom, transparent, rgba(73, 196, 255, 0.62) 8%, rgba(73, 196, 255, 0.42) 92%, transparent); box-shadow: 0 0 14px rgba(54, 180, 255, 0.28); }
+.track::before { position: absolute; inset: 0 -2px; border-left: 1px dashed rgba(207, 245, 255, 0.46); content: ""; }
+.trackLight { position: absolute; left: 50%; top: 0; width: 7px; height: 7px; border-radius: 50%; background: #e0faff; box-shadow: 0 0 12px #61d7ff; transform: translateX(-50%); animation: trackFlow 4.2s ease-in-out infinite; }
+
+.stops { position: absolute; inset: 13% 0 4%; z-index: 2; }
+.stop { position: absolute; display: grid; grid-template-columns: 32px 32px minmax(0, 1fr); align-items: center; gap: 10px; width: 39%; min-height: 77px; padding: 10px 13px; border: 1px solid rgba(145, 220, 255, 0.36); background: linear-gradient(135deg, rgba(22, 73, 112, 0.94), rgba(5, 27, 57, 0.97)); box-shadow: 0 9px 0 rgba(3, 16, 37, 0.76), 0 18px 25px rgba(0, 8, 24, 0.3), inset 0 1px rgba(225, 249, 255, 0.15); color: white; }
+.stop::after { position: absolute; top: 0; width: 24px; height: 100%; background: inherit; content: ""; }
+.stop.left { left: 4%; border-radius: 24px 10px 10px 24px; }
+.stop.right { right: 4%; border-radius: 10px 24px 24px 10px; }
+.stop.left::after { right: -23px; clip-path: polygon(0 25%, 100% 50%, 0 75%); }
+.stop.right::after { left: -23px; clip-path: polygon(100% 25%, 0 50%, 100% 75%); }
+.stop:nth-child(1) { top: 0; }.stop:nth-child(2) { top: 28%; }.stop:nth-child(3) { top: 56%; }.stop:nth-child(4) { top: 84%; }
+.stopMarker { display: grid; grid-column: 2; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(134, 222, 255, 0.56); border-radius: 50%; background: #0b537e; color: #d8f7ff; }
+.stopCopy { display: grid; grid-column: 3; gap: 3px; min-width: 0; }
+.stopNumber { grid-column: 1; grid-row: 1 / span 2; color: rgba(165, 231, 255, 0.7); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.05em; }
+.stopCopy strong { color: #edfaff; font-size: 0.72rem; font-weight: 500; line-height: 1.2; }
+.stopCopy > span:last-child { color: rgba(199, 233, 247, 0.7); font-size: 0.59rem; font-weight: 300; line-height: 1.35; }
+
+@keyframes trackFlow { 50% { top: 96%; opacity: 0.2; } }
+
+@media (max-width: 700px) {
+  .launchIcon { width: 32px; height: 32px; font-size: 1rem; }
+  .launchLabel { font-size: 0.4rem; }
+  .stop { width: 42%; min-height: 58px; padding: 7px; grid-template-columns: 21px 23px minmax(0, 1fr); gap: 5px; }
+  .stop.left { left: 1%; }.stop.right { right: 1%; }
+  .stopMarker { width: 22px; height: 22px; }.stopMarker svg { width: 13px; height: 13px; }
+  .stopNumber { font-size: 0.43rem; }.stopCopy strong { font-size: 0.52rem; }.stopCopy > span:last-child { font-size: 0.41rem; }
+}
+
+@media (prefers-reduced-motion: reduce) { .trackLight { animation: none; } }

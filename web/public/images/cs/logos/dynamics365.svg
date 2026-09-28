@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 43 62" role="img" aria-label="Dynamics 365">
+  <defs>
+    <linearGradient id="d1" gradientUnits="userSpaceOnUse" x1="14" y1="2" x2="28" y2="58">
+      <stop offset="0" stop-color="#0B53CE"/>
+      <stop offset="1" stop-color="#7252AA"/>
+    </linearGradient>
+    <linearGradient id="d2" gradientUnits="userSpaceOnUse" x1="22" y1="58" x2="22" y2="18">
+      <stop offset="0" stop-color="#2266E3"/>
+      <stop offset="1" stop-color="#AE7FE2"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#d1)" d="M0 0 43 15.4v21.1c0 1.7-1.7 2.9-3.3 2.3L30.7 35.6V23.6c0-2.6-1.6-4.9-4-5.8L22.5 16.2c-.8-.3-1.7.3-1.7 1.3v14.6L0 24.6V0z"/>
+  <path fill="url(#d2)" d="M43 15.2c0 2.6-1.6 4.9-4 5.8L11.1 31.2v25.6L43 45.8V15.2z"/>
+  <path fill="#94B9FF" fill-opacity=".5" d="M30.7 35.7 20.9 39.3v15.4c0 1 .9 1.6 1.7 1.3l5.6-2.1c2.4-.9 4-3.2 4-5.8V35.7z"/>
+</svg>

@@ -1,0 +1,323 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  height: 100vh;
+  min-height: 640px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  padding: 0 30px 60px;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(186, 216, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(186, 216, 255, 0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 28%, #000 10%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 28%, #000 10%, transparent 78%);
+}
+
+.rightGlow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(58vw, 820px);
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  isolation: isolate;
+  mix-blend-mode: lighten;
+  mask-image:
+    linear-gradient(to left, #000 18%, transparent 92%),
+    linear-gradient(to top, #000 12%, rgba(0, 0, 0, 0.7) 48%, transparent 88%);
+  -webkit-mask-image:
+    linear-gradient(to left, #000 18%, transparent 92%),
+    linear-gradient(to top, #000 12%, rgba(0, 0, 0, 0.7) 48%, transparent 88%);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+.rightGlow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 88% 62%, rgba(226, 70, 160, 0.45) 0%, transparent 62%),
+    radial-gradient(ellipse 48% 40% at 72% 78%, rgba(236, 150, 50, 0.28) 0%, transparent 58%);
+  pointer-events: none;
+}
+
+.rightGlowImg {
+  object-fit: cover;
+  object-position: 88% 68%;
+  opacity: 0.9;
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  transform-origin: 50% 85%;
+  will-change: transform, filter, opacity;
+}
+
+.inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-left: 72px;
+}
+
+.socialStack {
+  position: absolute;
+  left: 30px;
+  bottom: 72px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.socialLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  opacity: 0.85;
+  filter: brightness(0) invert(1);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.socialLink img {
+  width: 32px;
+  height: 32px;
+}
+
+.socialLink:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.headline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.designing {
+  font-size: 120px;
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: #fff;
+  height: auto;
+  min-height: 128px;
+  display: flex;
+  align-items: flex-end;
+  overflow: visible;
+}
+
+.lineClip {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.22em;
+  margin-bottom: -0.08em;
+}
+
+.lineMask {
+  display: block;
+  will-change: transform;
+  line-height: 1;
+  padding-bottom: 0.08em;
+}
+
+.forRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 142px;
+  overflow: hidden;
+}
+
+.forText {
+  font-size: 120px;
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  display: block;
+  will-change: transform;
+}
+
+.ticker {
+  position: relative;
+  height: 168px;
+  overflow: hidden;
+  width: min(700px, 55vw);
+}
+
+.tickerTrack {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.tickerWord {
+  height: 168px;
+  display: flex;
+  align-items: center;
+  font-size: 120px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+@media (max-width: 1199.98px) {
+  .designing,
+  .forText,
+  .tickerWord {
+    font-size: 100px;
+  }
+  .designing {
+    min-height: 112px;
+    height: auto;
+  }
+  .forRow {
+    height: 120px;
+  }
+  .ticker {
+    height: 140px;
+  }
+  .tickerWord {
+    height: 140px;
+  }
+  .inner {
+    padding-left: 56px;
+  }
+}
+
+@media (max-width: 809.98px) {
+  .hero {
+    height: 90vh;
+    min-height: 520px;
+    padding: 0 16px 40px;
+  }
+  .socialStack {
+    left: 16px;
+    bottom: 48px;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .inner {
+    padding-left: 56px;
+  }
+  .designing,
+  .forText,
+  .tickerWord {
+    font-size: clamp(2.4rem, 12vw, 62px);
+  }
+  .designing {
+    height: auto;
+    min-height: 1.15em;
+  }
+  .forRow {
+    height: 90px;
+    gap: 8px;
+  }
+  .ticker {
+    height: 90px;
+    width: min(100%, 58vw);
+  }
+  .tickerWord {
+    height: 90px;
+  }
+}
+
+@media (max-width: 479.98px) {
+  .hero {
+    height: 88vh;
+    min-height: 480px;
+    padding: 0 12px 28px;
+  }
+  .forRow {
+    height: 72px;
+  }
+  .ticker {
+    height: 72px;
+  }
+  .tickerWord {
+    height: 72px;
+  }
+}
+
+/* --- Hero CTAs (M-07) --- */
+.ctaRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+  padding: 0 var(--page-pad, 24px);
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 120, 212, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ctaPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 120, 212, 0.5);
+}
+
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(190, 220, 255, 0.85);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.ctaSecondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
