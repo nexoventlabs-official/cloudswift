@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/adminApi";
+import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
 type Template = {
@@ -21,9 +22,12 @@ export default function TemplatesPage() {
   const [items, setItems] = useState<Template[]>([]);
   const [editing, setEditing] = useState<Template | null>(null);
   const [toast, setToast] = useState("");
+  const [loading, setLoading] = useState(true);
 
   async function load() {
+    setLoading(true);
     try { const r = await adminApi.get("/admin/templates"); setItems(r.data || []); } catch {}
+    setLoading(false);
   }
   useEffect(() => { load(); }, []);
   function flash(m: string) { setToast(m); setTimeout(() => setToast(""), 2500); }
@@ -54,7 +58,9 @@ export default function TemplatesPage() {
         {!editing && <button className={s.btn} onClick={() => setEditing({ ...blank })}>New template</button>}
       </div>
 
-      {editing ? (
+      {loading && !editing ? (
+        <Loader />
+      ) : editing ? (
         <div style={{ display: "grid", gap: 14, maxWidth: 680 }}>
           <div><label className={s.muted}>Name</label><input className={s.input} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
           <div><label className={s.muted}>Slug</label><input className={s.input} value={editing.slug} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} /></div>

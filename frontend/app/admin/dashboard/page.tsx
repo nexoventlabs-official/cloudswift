@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/adminApi";
+import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
 type Stats = {
@@ -35,7 +36,7 @@ export default function DashboardPage() {
       <div className={s.h1}>Dashboard</div>
       <div className={s.sub}>Live overview of your WhatsApp lead pipeline.</div>
       {err && <p className={s.muted}>Could not load stats: {err}</p>}
-      {!stats && !err && <p className={s.muted}>Loading…</p>}
+      {!stats && !err && <Loader />}
       <div className={s.cards}>
         {cards.map((c) => (
           <div key={c.l} className={s.statCard}>

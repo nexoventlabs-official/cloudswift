@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { adminApi } from "@/lib/adminApi";
+import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
 type Conv = { _id: string; phone: string; name?: string; company?: string; lastMessage?: string; label?: string; botPaused?: boolean; optedOut?: boolean };
@@ -11,16 +12,22 @@ export default function CrmPage() {
   const [sel, setSel] = useState<Conv | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [reply, setReply] = useState("");
+  const [loadingConvs, setLoadingConvs] = useState(true);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
 
   const loadConvs = useCallback(async () => {
+    setLoadingConvs(true);
     try { const r = await adminApi.get("/crm/conversations?limit=80"); setConvs(r.data || []); } catch {}
+    setLoadingConvs(false);
   }, []);
   useEffect(() => { loadConvs(); }, [loadConvs]);
 
   const openConv = useCallback(async (c: Conv) => {
     setSel(c);
+    setLoadingMsgs(true);
     try { const r = await adminApi.get(`/crm/conversations/${c.phone}/messages`); setMsgs(r.data || []); } catch {}
+    setLoadingMsgs(false);
   }, []);
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
@@ -45,10 +52,10 @@ export default function CrmPage() {
   }
 
   return (
-    <div>
-      <div className={s.h1} style={{ marginBottom: 16 }}>CRM / Chats</div>
+    <div className={s.crmFull}>
       <div className={s.crm}>
         <div className={s.convList}>
+          {loadingConvs && <Loader />}
           {convs.map((c) => (
             <div key={c._id} className={`${s.convItem} ${sel?.phone === c.phone ? s.convActive : ""}`} onClick={() => openConv(c)}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -58,7 +65,7 @@ export default function CrmPage() {
               <div className={s.muted} style={{ fontSize: "0.78rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMessage || "—"}</div>
             </div>
           ))}
-          {convs.length === 0 && <div className={s.muted} style={{ padding: 16 }}>No conversations yet.</div>}
+          {!loadingConvs && convs.length === 0 && <div className={s.muted} style={{ padding: 16 }}>No conversations yet.</div>}
         </div>
         <div className={s.chat}>
           {!sel ? (
@@ -73,7 +80,7 @@ export default function CrmPage() {
                 <button className={s.btnGhost} onClick={toggleBot}>{sel.botPaused ? "▶ Resume bot" : "⏸ Pause bot"}</button>
               </div>
               <div className={s.msgs}>
-                {msgs.map((m) => (
+                {loadingMsgs ? <Loader /> : msgs.map((m) => (
                   <div key={m._id} className={`${s.bubble} ${m.direction === "outbound" ? s.outbound : s.inbound}`}>{m.body}</div>
                 ))}
                 <div ref={bottom} />

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/adminApi";
+import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
 type Field = { key: string; label: string; type: "image" | "link"; aspectRatio?: string };
@@ -40,6 +41,7 @@ export default function FlowImagesPage() {
   const [assets, setAssets] = useState<Record<string, Asset>>({});
   const [busy, setBusy] = useState("");
   const [toast, setToast] = useState("");
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     try {
@@ -48,6 +50,7 @@ export default function FlowImagesPage() {
       (r.data || []).forEach((a: Asset) => (map[a.key] = a));
       setAssets(map);
     } catch {}
+    setLoading(false);
   }
   useEffect(() => { load(); }, []);
 
@@ -79,7 +82,8 @@ export default function FlowImagesPage() {
     <div>
       <div className={s.h1}>Flow Images</div>
       <div className={s.sub}>Images used inside the WhatsApp flow. Hosted on Cloudinary.</div>
-      {GROUPS.map((g) => (
+      {loading && <Loader />}
+      {!loading && GROUPS.map((g) => (
         <div key={g.group}>
           <div className={s.grpTitle}>{g.group}</div>
           <div className={s.assetGrid}>

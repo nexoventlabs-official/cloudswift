@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { BlogPost } from "@/lib/blogs";
 import { blogCategories } from "@/lib/data";
+import Loader from "@/components/Loader";
 import styles from "../admin.module.css";
 
 const API = (process.env.NEXT_PUBLIC_API_BASE ?? "https://cloudswift.onrender.com/api").replace(/\/$/, "");
@@ -27,6 +28,7 @@ export default function AdminBlogsPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [editing, setEditing] = useState<(typeof empty & { id?: string; slug?: string }) | null>(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const token = useCallback(() => (typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null), []);
   const authHeaders = useCallback(
@@ -40,6 +42,7 @@ export default function AdminBlogsPage() {
     const res = await fetch(`${API}/blog/all`, { headers: authHeaders() });
     if (res.status === 401) { localStorage.removeItem(TOKEN_KEY); router.push("/admin/login"); return; }
     if (res.ok) setPosts(await res.json());
+    setLoading(false);
   }, [router, token, authHeaders]);
 
   useEffect(() => { load(); }, [load]);
@@ -91,7 +94,9 @@ export default function AdminBlogsPage() {
         </div>
       </div>
 
-      {editing ? (
+      {loading && !editing ? (
+        <Loader />
+      ) : editing ? (
         <div className={styles.formGrid}>
           <label className={styles.label}>
             Title

@@ -83,7 +83,8 @@
 .muted { color: rgba(255,255,255,0.5); font-size: 0.85rem; }
 
 /* CRM */
-.crm { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 120px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; }
+.crmFull { margin: -32px -34px; height: 100vh; }
+.crm { display: grid; grid-template-columns: 340px 1fr; gap: 0; height: 100%; width: 100%; overflow: hidden; }
 .convList { border-right: 1px solid rgba(255,255,255,0.08); overflow-y: auto; min-height: 0; }
 .convItem { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
 .convItem:hover { background: rgba(255,255,255,0.03); }

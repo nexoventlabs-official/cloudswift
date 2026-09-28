@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/adminApi";
+import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
 type Setting = { key: string; value: string; label: string; group: string; inputType: string; description?: string };
@@ -61,7 +62,7 @@ export default function SettingsPage() {
           ))}
         </div>
       ))}
-      {settings.length === 0 && <p className={s.muted}>Loading…</p>}
+      {settings.length === 0 && <Loader />}
       {toast && <div className={s.toast}>{toast}</div>}
     </div>
   );

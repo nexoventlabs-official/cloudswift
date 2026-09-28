@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { adminApi } from "@/lib/adminApi";
+import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
 type Lead = {
@@ -60,7 +61,7 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {loading ? <p className={s.muted}>Loading…</p> : (
+      {loading ? <Loader /> : (
         <table className={s.table}>
           <thead>
             <tr><th>Name</th><th>Company</th><th>Phone</th><th>Topic</th><th>Score</th><th>Status</th><th></th></tr>
