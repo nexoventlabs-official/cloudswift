@@ -11,4 +11,3 @@ keys/
 
 # Large source archive — keep local, never commit (exceeds GitHub 100MB limit)
 *.7z
-web/_pagecheck.txt

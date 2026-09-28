@@ -1,0 +1,13 @@
+/                    200
+/about               200
+/services            200
+/managed-cloud       200
+/ai-services         200
+/solutions           200
+/industries          200
+/projects            200
+/blog                200
+/contact             200
+/terms-of-service    200
+/privacy-policy      200
+/admin/login         200
