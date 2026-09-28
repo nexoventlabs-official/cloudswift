@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import CustomCursor from "@/components/CustomCursor";
-import AIAssistant from "@/components/AIAssistant";
+import SiteChrome from "@/components/SiteChrome";
 import {
   GoogleTagManager,
   GoogleTagManagerNoScript,
@@ -56,10 +54,8 @@ export default function RootLayout({
         <GoogleTagManagerNoScript />
         <GoogleTagManager />
         <MetaPixel />
-        <CustomCursor />
-        <Navbar />
+        <SiteChrome />
         <main>{children}</main>
-        <AIAssistant />
       </body>
     </html>
   );

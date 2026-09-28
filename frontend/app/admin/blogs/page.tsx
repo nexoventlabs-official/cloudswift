@@ -80,8 +80,8 @@ export default function AdminBlogsPage() {
   }
 
   return (
-    <div className={styles.shell}>
-      <div className={styles.top}>
+    <div>
+      <div className={styles.top} style={{ marginBottom: 24 }}>
         <div>
           <p className={styles.eyebrow}>CloudSwift Admin</p>
           <h1 className={styles.title}>Blog management</h1>

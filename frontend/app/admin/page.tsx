@@ -1,12 +1,12 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getToken } from "@/lib/adminApi";
 
 export default function AdminIndex() {
   const router = useRouter();
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("cs_admin_token") : null;
-    router.replace(token ? "/admin/blogs" : "/admin/login");
+    router.replace(getToken() ? "/admin/dashboard" : "/admin/login");
   }, [router]);
   return null;
 }
