@@ -44,11 +44,6 @@ export default function AdminBlogsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    router.push("/admin/login");
-  }
-
   async function save() {
     if (!editing?.title) return;
     setError("");
@@ -86,16 +81,13 @@ export default function AdminBlogsPage() {
           <p className={styles.eyebrow}>CloudSwift Admin</p>
           <h1 className={styles.title}>Blog management</h1>
         </div>
-        <div className={styles.actions}>
+        <div className={styles.actions} style={{ alignItems: "center" }}>
           <button className={styles.btn} type="button" onClick={() => setEditing({ ...empty })}>
             New post
           </button>
-          <Link href="/blog" className={styles.ghost}>
-            View blog
+          <Link href="/blog" target="_blank" className={styles.ghost}>
+            View blog ↗
           </Link>
-          <button className={styles.ghost} type="button" onClick={logout}>
-            Log out
-          </button>
         </div>
       </div>
 

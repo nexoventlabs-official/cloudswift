@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "../admin.module.css";
 
@@ -12,6 +12,13 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Already logged in (e.g. pressed Back) → go straight to the dashboard.
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem(TOKEN_KEY)) {
+      router.replace("/admin/dashboard");
+    }
+  }, [router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
