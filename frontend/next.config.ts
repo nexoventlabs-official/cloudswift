@@ -2,7 +2,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // "standalone" is only for self-hosting (Docker). On Vercel it breaks the
+  // build (missing *.nft.json from file tracing), so skip it there.
+  output: process.env.VERCEL ? undefined : "standalone",
   images: {
     // AVIF often shifts warm golds into a light yellow cast on this gradient
     formats: ["image/webp"],
