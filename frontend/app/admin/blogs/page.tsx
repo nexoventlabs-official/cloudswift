@@ -1,10 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { BlogPost } from "@/lib/blogs";
 import { blogCategories } from "@/lib/data";
 import styles from "../admin.module.css";
+
+const API = (process.env.NEXT_PUBLIC_API_BASE ?? "https://cloudswift.onrender.com/api").replace(/\/$/, "");
+const TOKEN_KEY = "cs_admin_token";
 
 const empty = {
   title: "",
@@ -25,21 +28,24 @@ export default function AdminBlogsPage() {
   const [editing, setEditing] = useState<(typeof empty & { id?: string; slug?: string }) | null>(null);
   const [error, setError] = useState("");
 
-  async function load() {
-    const res = await fetch("/api/blogs?all=1");
-    if (res.status === 401) {
-      router.push("/admin/login");
-      return;
-    }
-    setPosts(await res.json());
-  }
+  const token = useCallback(() => (typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null), []);
+  const authHeaders = useCallback(
+    () => ({ Authorization: `Bearer ${token() || ""}` }),
+    [token]
+  );
 
-  useEffect(() => {
-    load();
-  }, []);
+  const load = useCallback(async () => {
+    const t = token();
+    if (!t) { router.push("/admin/login"); return; }
+    const res = await fetch(`${API}/blog/all`, { headers: authHeaders() });
+    if (res.status === 401) { localStorage.removeItem(TOKEN_KEY); router.push("/admin/login"); return; }
+    if (res.ok) setPosts(await res.json());
+  }, [router, token, authHeaders]);
 
-  async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
+  useEffect(() => { load(); }, [load]);
+
+  function logout() {
+    localStorage.removeItem(TOKEN_KEY);
     router.push("/admin/login");
   }
 
@@ -47,30 +53,27 @@ export default function AdminBlogsPage() {
     if (!editing?.title) return;
     setError("");
     const method = editing.id ? "PUT" : "POST";
-    const url = editing.id ? `/api/blogs/${editing.id}` : "/api/blogs";
+    const url = editing.id ? `${API}/blog/${editing.id}` : `${API}/blog`;
     const res = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(editing),
     });
-    if (!res.ok) {
-      setError("Save failed");
-      return;
-    }
+    if (!res.ok) { setError("Save failed"); return; }
     setEditing(null);
     await load();
   }
 
   async function remove(id: string) {
     if (!confirm("Delete this post?")) return;
-    await fetch(`/api/blogs/${id}`, { method: "DELETE" });
+    await fetch(`${API}/blog/${id}`, { method: "DELETE", headers: authHeaders() });
     await load();
   }
 
   async function onUpload(file: File) {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const res = await fetch(`${API}/blog/upload`, { method: "POST", headers: authHeaders(), body: fd });
     if (!res.ok) return;
     const data = await res.json();
     setEditing((e) => (e ? { ...e, coverImage: data.url } : e));
@@ -100,111 +103,54 @@ export default function AdminBlogsPage() {
         <div className={styles.formGrid}>
           <label className={styles.label}>
             Title
-            <input
-              className={styles.input}
-              value={editing.title}
-              onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-            />
+            <input className={styles.input} value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} />
           </label>
           <label className={styles.label}>
             Excerpt
-            <textarea
-              className={styles.textarea}
-              value={editing.excerpt}
-              onChange={(e) => setEditing({ ...editing, excerpt: e.target.value })}
-            />
+            <textarea className={styles.textarea} value={editing.excerpt} onChange={(e) => setEditing({ ...editing, excerpt: e.target.value })} />
           </label>
           <label className={styles.label}>
             Content (markdown-ish)
-            <textarea
-              className={styles.textarea}
-              style={{ minHeight: 280 }}
-              value={editing.content}
-              onChange={(e) => setEditing({ ...editing, content: e.target.value })}
-            />
+            <textarea className={styles.textarea} style={{ minHeight: 280 }} value={editing.content} onChange={(e) => setEditing({ ...editing, content: e.target.value })} />
           </label>
           <label className={styles.label}>
             Category
-            <select
-              className={styles.select}
-              value={editing.category}
-              onChange={(e) => setEditing({ ...editing, category: e.target.value })}
-            >
-              {blogCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
+            <select className={styles.select} value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value })}>
+              {blogCategories.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
           </label>
           <label className={styles.label}>
             Author
-            <input
-              className={styles.input}
-              value={editing.author}
-              onChange={(e) => setEditing({ ...editing, author: e.target.value })}
-            />
+            <input className={styles.input} value={editing.author} onChange={(e) => setEditing({ ...editing, author: e.target.value })} />
           </label>
           <label className={styles.label}>
             Publish date
-            <input
-              type="date"
-              className={styles.input}
-              value={editing.publishedAt}
-              onChange={(e) => setEditing({ ...editing, publishedAt: e.target.value })}
-            />
+            <input type="date" className={styles.input} value={editing.publishedAt} onChange={(e) => setEditing({ ...editing, publishedAt: e.target.value })} />
           </label>
           <label className={styles.label}>
             Cover image URL
-            <input
-              className={styles.input}
-              value={editing.coverImage}
-              onChange={(e) => setEditing({ ...editing, coverImage: e.target.value })}
-            />
+            <input className={styles.input} value={editing.coverImage} onChange={(e) => setEditing({ ...editing, coverImage: e.target.value })} />
           </label>
           <label className={styles.label}>
             Upload cover
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onUpload(f);
-              }}
-            />
+            <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
           </label>
           <label className={styles.label}>
             SEO title
-            <input
-              className={styles.input}
-              value={editing.seoTitle || ""}
-              onChange={(e) => setEditing({ ...editing, seoTitle: e.target.value })}
-            />
+            <input className={styles.input} value={editing.seoTitle || ""} onChange={(e) => setEditing({ ...editing, seoTitle: e.target.value })} />
           </label>
           <label className={styles.label}>
             SEO description
-            <input
-              className={styles.input}
-              value={editing.seoDescription || ""}
-              onChange={(e) => setEditing({ ...editing, seoDescription: e.target.value })}
-            />
+            <input className={styles.input} value={editing.seoDescription || ""} onChange={(e) => setEditing({ ...editing, seoDescription: e.target.value })} />
           </label>
           <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={editing.published}
-              onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
-            />
+            <input type="checkbox" checked={editing.published} onChange={(e) => setEditing({ ...editing, published: e.target.checked })} />
             Published
           </label>
           {error && <p className={styles.error}>{error}</p>}
           <div className={styles.actions}>
-            <button className={styles.btn} type="button" onClick={save}>
-              Save
-            </button>
-            <button className={styles.ghost} type="button" onClick={() => setEditing(null)}>
-              Cancel
-            </button>
+            <button className={styles.btn} type="button" onClick={save}>Save</button>
+            <button className={styles.ghost} type="button" onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </div>
       ) : (
@@ -218,26 +164,14 @@ export default function AdminBlogsPage() {
                 </div>
               </div>
               <div className={styles.actions}>
-                <button
-                  className={styles.ghost}
-                  type="button"
-                  onClick={() =>
-                    setEditing({
-                      ...empty,
-                      ...p,
-                      seoTitle: p.seoTitle || "",
-                      seoDescription: p.seoDescription || "",
-                    })
-                  }
-                >
+                <button className={styles.ghost} type="button" onClick={() => setEditing({ ...empty, ...p, seoTitle: p.seoTitle || "", seoDescription: p.seoDescription || "" })}>
                   Edit
                 </button>
-                <button className={styles.ghost} type="button" onClick={() => remove(p.id)}>
-                  Delete
-                </button>
+                <button className={styles.ghost} type="button" onClick={() => remove(p.id)}>Delete</button>
               </div>
             </div>
           ))}
+          {posts.length === 0 && <p className={styles.rowMeta}>No posts yet. Click “New post”.</p>}
         </div>
       )}
     </div>

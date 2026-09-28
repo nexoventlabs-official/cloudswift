@@ -1,7 +1,12 @@
-import { redirect } from "next/navigation";
-import { isAdminAuthenticated } from "@/lib/auth";
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default async function AdminIndex() {
-  if (await isAdminAuthenticated()) redirect("/admin/blogs");
-  redirect("/admin/login");
+export default function AdminIndex() {
+  const router = useRouter();
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("cs_admin_token") : null;
+    router.replace(token ? "/admin/blogs" : "/admin/login");
+  }, [router]);
+  return null;
 }
