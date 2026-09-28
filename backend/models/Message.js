@@ -24,6 +24,8 @@ const MessageSchema = new mongoose.Schema(
     },
     // Template name if this was a template message
     templateName: { type: String, default: '' },
+    // Rich rendering metadata for CRM: { kind, headerKey, buttons:[titles], flowCta, replyTitle }
+    meta: { type: mongoose.Schema.Types.Mixed, default: {} },
     // Raw Meta payload for debugging
     rawPayload: { type: mongoose.Schema.Types.Mixed },
   },

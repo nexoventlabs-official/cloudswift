@@ -5,7 +5,16 @@ import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
 type Conv = { _id: string; phone: string; name?: string; company?: string; lastMessage?: string; label?: string; botPaused?: boolean; optedOut?: boolean };
-type Msg = { _id: string; direction: string; body: string; createdAt: string; status?: string };
+type MsgMeta = {
+  kind?: string;
+  headerKey?: string;
+  buttons?: string[];
+  flowCta?: string;
+  reply?: boolean;
+  replyTitle?: string;
+  flowSubmission?: Record<string, unknown>;
+};
+type Msg = { _id: string; direction: string; type?: string; body: string; createdAt: string; status?: string; meta?: MsgMeta };
 
 export default function CrmPage() {
   const [convs, setConvs] = useState<Conv[]>([]);
@@ -14,6 +23,7 @@ export default function CrmPage() {
   const [reply, setReply] = useState("");
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [assets, setAssets] = useState<Record<string, string>>({});
   const bottom = useRef<HTMLDivElement>(null);
 
   const loadConvs = useCallback(async () => {
@@ -22,6 +32,18 @@ export default function CrmPage() {
     setLoadingConvs(false);
   }, []);
   useEffect(() => { loadConvs(); }, [loadConvs]);
+
+  // Resolve header image keys → URLs (asset library) once
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await adminApi.get("/assets");
+        const map: Record<string, string> = {};
+        for (const a of r.data || []) if (a.key && a.url) map[a.key] = a.url;
+        setAssets(map);
+      } catch {}
+    })();
+  }, []);
 
   const openConv = useCallback(async (c: Conv) => {
     setSel(c);
@@ -38,7 +60,7 @@ export default function CrmPage() {
     setReply("");
     try {
       await adminApi.post(`/crm/conversations/${sel.phone}/send`, { message: text });
-      setMsgs((m) => [...m, { _id: String(Date.now()), direction: "outbound", body: text, createdAt: new Date().toISOString() }]);
+      setMsgs((m) => [...m, { _id: String(Date.now()), direction: "outbound", type: "text", body: text, createdAt: new Date().toISOString() }]);
       setSel((c) => (c ? { ...c, botPaused: true } : c));
       setConvs((cs) => cs.map((c) => (c.phone === sel.phone ? { ...c, botPaused: true } : c)));
     } catch {}
@@ -49,6 +71,45 @@ export default function CrmPage() {
     await adminApi.post(`/crm/conversations/${sel.phone}/bot`, { paused });
     setSel({ ...sel, botPaused: paused });
     setConvs((cs) => cs.map((c) => (c.phone === sel.phone ? { ...c, botPaused: paused } : c)));
+  }
+
+  function renderBubble(m: Msg) {
+    const outbound = m.direction === "outbound";
+    const meta = m.meta || {};
+    const headerUrl = meta.headerKey ? assets[meta.headerKey] : "";
+
+    // Inbound button/list tap → show as a reply chip
+    if (!outbound && meta.reply && meta.replyTitle) {
+      return (
+        <div className={`${s.bubble} ${s.inbound} ${s.waMsg}`}>
+          <span className={s.replyChip}>↩ {meta.replyTitle}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`${s.bubble} ${outbound ? s.outbound : s.inbound} ${s.waMsg}`}>
+        {headerUrl && (
+          <div className={s.waHeader}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={headerUrl} alt="" />
+          </div>
+        )}
+        {m.body && <div className={s.waBody}>{m.body}</div>}
+        {meta.buttons && meta.buttons.length > 0 && (
+          <div className={s.waButtons}>
+            {meta.buttons.map((b, i) => (
+              <span key={i} className={s.waBtn}>{b}</span>
+            ))}
+          </div>
+        )}
+        {meta.flowCta && (
+          <div className={s.waButtons}>
+            <span className={`${s.waBtn} ${s.waFlowBtn}`}>▸ {meta.flowCta}</span>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -81,7 +142,9 @@ export default function CrmPage() {
               </div>
               <div className={s.msgs}>
                 {loadingMsgs ? <Loader /> : msgs.map((m) => (
-                  <div key={m._id} className={`${s.bubble} ${m.direction === "outbound" ? s.outbound : s.inbound}`}>{m.body}</div>
+                  <div key={m._id} className={m.direction === "outbound" ? s.rowOut : s.rowIn}>
+                    {renderBubble(m)}
+                  </div>
                 ))}
                 <div ref={bottom} />
               </div>

@@ -15,7 +15,7 @@ import logger from './logger.js';
 import { sendText, sendButtons, sendImage, markRead } from './metaCloud.js';
 import { sendServiceFlow, sendQualifyFlow, sendContactFlow, sendBookingFlow } from './flowService.js';
 import {
-  WELCOME_BODY, VALID_TOPICS,
+  WELCOME_BODY, VALID_TOPICS, QUALIFY_FLOW_BODY, BOOKING_FLOW_BODY, CONTACT_FLOW_BODY,
   A1_BODY, A1_BUTTONS,
   Q1_BODY, Q1_BUTTONS, SIZE_MAP,
   Q2_BODY, Q2_BUTTONS, SITUATION_MAP,
@@ -57,17 +57,20 @@ async function upsertConversation(phone, name, lastMessage) {
     { upsert: true, new: true }
   );
 }
-async function logMessage(phone, convId, direction, type, body, waMessageId, rawPayload) {
+async function logMessage(phone, convId, direction, type, body, waMessageId, rawPayload, meta) {
   try {
     const msg = await Message.create({
       phone, conversationId: convId, direction, type,
       body: body || '', waMessageId: waMessageId || '', rawPayload,
+      meta: meta || {},
       status: direction === 'inbound' ? 'received' : 'sent',
     });
     emitMessage(msg);
     return msg;
   } catch (err) { logger.warn('logMessage failed', { error: err.message }); }
 }
+// Extract just the button titles for CRM rich rendering
+const titles = (arr = []) => arr.map((b) => b.title);
 async function notifySalesRep(text) {
   const repNumber = await getSetting('salesRepWaNumber', process.env.SALES_REP_WA_NUMBER || '');
   if (!repNumber) { logger.warn('Sales rep WA number not configured'); return; }
@@ -83,7 +86,11 @@ export async function handleMessage(msg) {
 
   const preview = text || selectedId || (flowResponse ? '[flow submitted]' : '…');
   const conv = await upsertConversation(phone, name, preview);
-  await logMessage(phone, conv._id, 'inbound', type, preview, waMessageId, rawPayload);
+  // Mark button/list taps and flow submissions so the CRM can show a reply chip
+  let inboundMeta = {};
+  if (type === 'button' || type === 'list') inboundMeta = { reply: true, replyTitle: preview };
+  else if (type === 'flow') inboundMeta = { reply: true, flowSubmission: flowResponse || {} };
+  await logMessage(phone, conv._id, 'inbound', type, preview, waMessageId, rawPayload, inboundMeta);
 
   // X4 · Human takeover — bot stays silent
   if (conv.botPaused) { logger.info('Bot paused (human handling)', { phone }); return; }
@@ -181,7 +188,9 @@ async function startFlow(lead, conv) {
     // Fallback if the Flow isn't configured — plain text prompt
     await sendText(lead.phone, WELCOME_BODY(lead.name) + '\n\nReply with the service you need: Azure, Microsoft 365, Managed cloud, Security, or Other.');
   }
-  await logOutbound(conv, lead.phone, '[A0 service picker sent]');
+  await logOutbound(conv, lead.phone, WELCOME_BODY(lead.name), {
+    kind: 'flow', headerKey: 'welcome_header', flowCta: 'Choose service',
+  });
 }
 
 // ── A0 · service selected in the Flow ───────────────────────────────────────
@@ -195,7 +204,9 @@ async function handleServiceSelection(lead, conv, flowResponse) {
   setAwaiting(lead);
   await lead.save();
   await sendA1(lead.phone);
-  await logOutbound(conv, lead.phone, A1_BODY);
+  await logOutbound(conv, lead.phone, A1_BODY, {
+    kind: 'buttons', headerKey: 'a1_header', buttons: titles(A1_BUTTONS),
+  });
 }
 
 // Send the A1 (Continue / Talk to a person) message with its optional image header
@@ -227,13 +238,17 @@ async function handleA1(lead, conv, selectedId) {
       lead.flowStep = 'qualify_sent';
       setAwaiting(lead);
       await lead.save();
-      return logOutbound(conv, lead.phone, '[qualification flow sent]');
+      return logOutbound(conv, lead.phone, QUALIFY_FLOW_BODY(lead.name), {
+        kind: 'flow', headerKey: 'qualify_header', flowCta: 'Answer questions',
+      });
     }
     lead.flowStep = 'q1_sent';
     setAwaiting(lead);
     await lead.save();
     await sendButtons(lead.phone, Q1_BODY, Q1_BUTTONS);
-    return logOutbound(conv, lead.phone, Q1_BODY);
+    return logOutbound(conv, lead.phone, Q1_BODY, {
+      kind: 'buttons', buttons: titles(Q1_BUTTONS),
+    });
   }
   // a1_talk_person handled globally
   return handleInvalid(lead, conv, 'a1');
@@ -296,13 +311,17 @@ async function handleQ1(lead, conv, selectedId) {
     lead.flowStep = 'qualify_sent';
     setAwaiting(lead);
     await lead.save();
-    return logOutbound(conv, lead.phone, '[qualification flow sent]');
+    return logOutbound(conv, lead.phone, QUALIFY_FLOW_BODY(lead.name), {
+      kind: 'flow', headerKey: 'qualify_header', flowCta: 'Answer questions',
+    });
   }
   lead.flowStep = 'q2_sent';
   setAwaiting(lead);
   await lead.save();
   await sendButtons(lead.phone, Q2_BODY, Q2_BUTTONS);
-  return logOutbound(conv, lead.phone, Q2_BODY);
+  return logOutbound(conv, lead.phone, Q2_BODY, {
+    kind: 'buttons', buttons: titles(Q2_BUTTONS),
+  });
 }
 
 // ── Q2 · situation ───────────────────────────────────────────────────────────
@@ -315,7 +334,9 @@ async function handleQ2(lead, conv, selectedId) {
   setAwaiting(lead);
   await lead.save();
   await sendButtons(lead.phone, Q3_BODY, Q3_BUTTONS);
-  return logOutbound(conv, lead.phone, Q3_BODY);
+  return logOutbound(conv, lead.phone, Q3_BODY, {
+    kind: 'buttons', buttons: titles(Q3_BUTTONS),
+  });
 }
 
 // ── Q3 · timeline ────────────────────────────────────────────────────────────
@@ -328,7 +349,9 @@ async function handleQ3(lead, conv, selectedId) {
   setAwaiting(lead);
   await lead.save();
   await sendButtons(lead.phone, Q4_BODY, Q4_BUTTONS);
-  return logOutbound(conv, lead.phone, Q4_BODY);
+  return logOutbound(conv, lead.phone, Q4_BODY, {
+    kind: 'buttons', buttons: titles(Q4_BUTTONS),
+  });
 }
 
 // ── Q4 · role → score ────────────────────────────────────────────────────────
@@ -365,16 +388,21 @@ async function goHot(lead, conv, reason = '') {
   await Conversation.updateOne({ phone: lead.phone }, { $set: { label: 'hot', leadId: lead._id } });
 
   await sendText(lead.phone, A_H_BODY);
+  await logOutbound(conv, lead.phone, A_H_BODY);
   // Collect name + company + email via a native form flow; fall back to a text prompt
   let sentForm = false;
   try { sentForm = await sendContactFlow(lead.phone, lead.name); }
   catch (e) { logger.warn('Contact flow send failed, falling back to text', { error: e.message }); }
-  if (!sentForm) {
+  if (sentForm) {
+    await logOutbound(conv, lead.phone, CONTACT_FLOW_BODY(lead.name), {
+      kind: 'flow', headerKey: 'hot_lead_header', flowCta: 'Share your details',
+    });
+  } else {
     const img = await assetUrl('hot_lead_header');
     if (img) await sendImage(lead.phone, img, H1_BODY);
     else     await sendText(lead.phone, H1_BODY);
+    await logOutbound(conv, lead.phone, H1_BODY, img ? { headerKey: 'hot_lead_header' } : {});
   }
-  await logOutbound(conv, lead.phone, `${A_H_BODY} | [contact form]`);
   logger.info('HOT lead', { phone: lead.phone, reason });
 }
 
@@ -391,7 +419,9 @@ async function handleContactSubmission(lead, conv, resp) {
   await Conversation.updateOne({ phone: lead.phone }, { $set: { name: lead.name || undefined, company: lead.company || undefined } });
   await notifySalesRep(HOT_SALES_BRIEF(lead));
   await sendH2(lead.phone, lead.name);
-  return logOutbound(conv, lead.phone, H2_BODY(lead.name || 'there'));
+  return logOutbound(conv, lead.phone, H2_BODY(lead.name || 'there'), {
+    kind: 'buttons', headerKey: 'h2_header', buttons: titles(H2_BUTTONS),
+  });
 }
 
 async function handleNameCompany(lead, conv, text) {
@@ -409,7 +439,9 @@ async function handleNameCompany(lead, conv, text) {
   await notifySalesRep(HOT_SALES_BRIEF(lead));
 
   await sendH2(lead.phone, lead.name);
-  return logOutbound(conv, lead.phone, H2_BODY(lead.name || 'there'));
+  return logOutbound(conv, lead.phone, H2_BODY(lead.name || 'there'), {
+    kind: 'buttons', headerKey: 'h2_header', buttons: titles(H2_BUTTONS),
+  });
 }
 
 // ── Booking form submission (name / business / phone / email) ────────────────
@@ -442,7 +474,9 @@ async function handleH2(lead, conv, selectedId) {
       lead.flowStep = 'awaiting_booking';
       setAwaiting(lead);
       await lead.save();
-      return logOutbound(conv, lead.phone, '[booking form sent]');
+      return logOutbound(conv, lead.phone, BOOKING_FLOW_BODY(lead.name), {
+        kind: 'flow', headerKey: 'calendly_header', flowCta: 'Book a call',
+      });
     }
     // Fallback if the booking flow isn't configured — Calendly link
     const salesRepName = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'our solutions team');
@@ -457,7 +491,7 @@ async function handleH2(lead, conv, selectedId) {
     if (img) await sendImage(lead.phone, img, H3_BODY(salesRepName, calendlyLink));
     else     await sendText(lead.phone, H3_BODY(salesRepName, calendlyLink));
     await notifySalesRep(HOT_SALES_BRIEF(lead, 'Chose: Book a call (Calendly sent)'));
-    return logOutbound(conv, lead.phone, H3_BODY(salesRepName, calendlyLink));
+    return logOutbound(conv, lead.phone, H3_BODY(salesRepName, calendlyLink), img ? { headerKey: 'calendly_header' } : {});
   }
   if (selectedId === 'hot_callback') {
     lead.flowStep = 'awaiting_callback_time';
@@ -505,8 +539,11 @@ async function goWarm(lead, conv) {
   const body = A_W_BODY(lead.topic);
   if (img) await sendImage(lead.phone, img, body);
   else     await sendText(lead.phone, body);
+  await logOutbound(conv, lead.phone, body, img ? { headerKey: 'nurture_header' } : {});
   await sendN1(lead.phone);
-  return logOutbound(conv, lead.phone, `${body} | ${N1_BODY}`);
+  return logOutbound(conv, lead.phone, N1_BODY, {
+    kind: 'buttons', headerKey: 'n1_header', buttons: titles(N1_BUTTONS),
+  });
 }
 
 async function handleN1(lead, conv, selectedId) {
@@ -546,7 +583,9 @@ async function goCold(lead, conv) {
   const img = await assetUrl('thank_you_header');
   const body = A_C_BODY(lead.topic);
   await sendButtons(lead.phone, body, COLD_BUTTONS, img || '');
-  return logOutbound(conv, lead.phone, body);
+  return logOutbound(conv, lead.phone, body, {
+    kind: 'buttons', headerKey: 'thank_you_header', buttons: titles(COLD_BUTTONS),
+  });
 }
 
 async function handleCold(lead, conv, selectedId) {
@@ -571,7 +610,9 @@ async function handleInvalid(lead, conv, at) {
   await lead.save();
   const img = await assetUrl('x1_header');
   await sendButtons(lead.phone, X1_BODY, X1_BUTTONS, img || '');
-  return logOutbound(conv, lead.phone, X1_BODY);
+  return logOutbound(conv, lead.phone, X1_BODY, {
+    kind: 'buttons', headerKey: 'x1_header', buttons: titles(X1_BUTTONS),
+  });
 }
 
 // ── Resend current step (x_retry / x_resume) ─────────────────────────────────
@@ -602,7 +643,9 @@ async function handleGeneral(lead, conv, preview) {
   await notifySalesRep(`💬 Message from ${lead.name || lead.phone} (${lead.score}) — "${preview}"\n→ wa.me/${lead.phone}`);
   const img = await assetUrl('general_header');
   await sendButtons(lead.phone, GENERAL_BODY, GENERAL_BUTTONS, img || '');
-  return logOutbound(conv, lead.phone, GENERAL_BODY);
+  return logOutbound(conv, lead.phone, GENERAL_BODY, {
+    kind: 'buttons', headerKey: 'general_header', buttons: titles(GENERAL_BUTTONS),
+  });
 }
 
 // ── X3 · opt-out ─────────────────────────────────────────────────────────────
@@ -640,10 +683,15 @@ function parseNameCompany(text = '') {
   return { name: t, company: '' };
 }
 
-async function logOutbound(conv, phone, body) {
+async function logOutbound(conv, phone, body, meta = {}) {
   try {
-    if (conv?._id) await logMessage(phone, conv._id, 'outbound', 'text', body, '', null);
-    await Conversation.updateOne({ phone }, { $set: { lastMessage: body.slice(0, 120), lastMessageAt: new Date() } });
+    // Derive the WA message type from the rich-meta kind so the CRM can render it
+    let type = 'text';
+    if (meta.kind === 'flow') type = 'flow';
+    else if (meta.kind === 'buttons') type = 'button';
+    else if (meta.headerKey && !meta.buttons && !meta.flowCta) type = 'image';
+    if (conv?._id) await logMessage(phone, conv._id, 'outbound', type, body, '', null, meta);
+    await Conversation.updateOne({ phone }, { $set: { lastMessage: (body || '').slice(0, 120), lastMessageAt: new Date() } });
   } catch {}
 }
 

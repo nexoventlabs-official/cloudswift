@@ -12,6 +12,18 @@ We help mid-market companies across India and the GCC with Azure, Microsoft 365 
 
 Tap *Choose service* below and we'll connect you with the right specialist.`;
 
+// Body text shown on the multi-screen qualification flow message (mirrors flowService.js).
+export const QUALIFY_FLOW_BODY = (name = '') =>
+  `Thanks${name ? ` ${name}` : ''} — just 4 quick questions so we can match you with the right specialist. Tap below 👇`;
+
+// Body text shown on the booking-form flow message (mirrors flowService.js).
+export const BOOKING_FLOW_BODY = (name = '') =>
+  `Great${name ? ` ${name}` : ''} — let's get your call booked. Tap below to share your details.`;
+
+// Body text shown on the contact-details form flow message (mirrors flowService.js).
+export const CONTACT_FLOW_BODY = (name = '') =>
+  `Great${name ? ` ${name}` : ''} — let's connect you with the right specialist. Tap below to share your details.`;
+
 // Service ids == Lead.topic values, so the Flow submission maps straight through.
 export const SERVICES = [
   { id: 'azure_migration', title: 'Azure migration',      description: 'Move to or optimise Azure infrastructure', iconKey: 'icon_azure' },
