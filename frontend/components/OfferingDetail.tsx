@@ -4,7 +4,7 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import TemplateMedia, { toneForCategory } from "@/components/TemplateMedia";
 import type { OfferingItem } from "@/lib/catalog";
-import styles from "@/app/solutions/[slug]/SolutionDetail.module.css";
+import styles from "@/app/(site)/solutions/[slug]/SolutionDetail.module.css";
 import local from "./OfferingDetail.module.css";
 
 export default function OfferingDetail({

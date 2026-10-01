@@ -5,7 +5,7 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import TemplateMedia, { toneForCategory } from "@/components/TemplateMedia";
 import type { OfferingCategory } from "@/lib/catalog";
-import styles from "@/app/solutions/SolutionsGrid.module.css";
+import styles from "@/app/(site)/solutions/SolutionsGrid.module.css";
 import local from "./OfferingCatalog.module.css";
 
 function slugify(label: string) {

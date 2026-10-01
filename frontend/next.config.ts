@@ -1,10 +1,22 @@
 /** Allow CloudSeek-sourced images (webp/svg) in the Nyro template. */
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// next-intl drives the CRM section (app/(app)/…). The request config
+// lives in src/i18n/request.ts.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   // "standalone" is only for self-hosting (Docker). On Vercel it breaks the
   // build (missing *.nft.json from file tracing), so skip it there.
   output: process.env.VERCEL ? undefined : "standalone",
+  // Dev-only: allow tunnelled hosts (ngrok etc.) to reach /_next internals.
+  allowedDevOrigins: [
+    "*.ngrok-free.app",
+    "*.ngrok.app",
+    "*.trycloudflare.com",
+    "*.loca.lt",
+  ],
   images: {
     // AVIF often shifts warm golds into a light yellow cast on this gradient
     formats: ["image/webp"],
@@ -325,4 +337,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
