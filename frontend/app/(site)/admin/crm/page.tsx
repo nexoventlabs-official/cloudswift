@@ -138,7 +138,10 @@ export default function CrmPage() {
                   <strong>{sel.name || sel.phone}</strong>
                   <div className={s.muted} style={{ fontSize: "0.78rem" }}>{sel.phone} {sel.company ? `· ${sel.company}` : ""}</div>
                 </div>
-                <button className={s.btnGhost} onClick={toggleBot}>{sel.botPaused ? "▶ Resume bot" : "⏸ Pause bot"}</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <WindowTimer lastInboundAt={lastInboundAt(msgs)} />
+                  <button className={s.btnGhost} onClick={toggleBot}>{sel.botPaused ? "▶ Resume bot" : "⏸ Pause bot"}</button>
+                </div>
               </div>
               <div className={s.msgs}>
                 {loadingMsgs ? <Loader /> : msgs.map((m) => (
@@ -158,5 +161,48 @@ export default function CrmPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Most recent inbound (customer) message timestamp — drives the window timer.
+function lastInboundAt(msgs: Msg[]): string | null {
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].direction === "inbound") return msgs[i].createdAt;
+  }
+  return null;
+}
+
+// 24h WhatsApp customer-service window timer. Ticks every second, shows a
+// live HH:MM:SS countdown, and turns red when under 10 hours remain.
+function WindowTimer({ lastInboundAt }: { lastInboundAt: string | null }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((v) => v + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const base: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700,
+    padding: "5px 12px", borderRadius: 9999, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
+  };
+  if (!lastInboundAt) {
+    return <span style={{ ...base, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.14)" }}>🔒 No window</span>;
+  }
+  const remaining = new Date(lastInboundAt).getTime() + 24 * 3600 * 1000 - Date.now();
+  if (remaining <= 0) {
+    return <span style={{ ...base, background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.4)" }}>🔒 Window closed</span>;
+  }
+  const danger = remaining < 10 * 3600 * 1000; // red under 10h
+  const total = Math.floor(remaining / 1000);
+  const hh = String(Math.floor(total / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  const skin: React.CSSProperties = danger
+    ? { background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.45)" }
+    : { background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.4)" };
+  return (
+    <span style={{ ...base, ...skin }} title="WhatsApp 24-hour customer-service window. Turns red under 10 hours left.">
+      ⏱ {hh}:{mm}:{ss}
+    </span>
   );
 }

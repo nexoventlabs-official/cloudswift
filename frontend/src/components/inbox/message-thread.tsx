@@ -232,32 +232,51 @@ export function MessageThread({
     };
   }, []);
 
-  // 24-hour session timer
-  const sessionInfo = useMemo(() => {
-    if (!messages.length) return { expired: false, remaining: "" };
+  // 24-hour WhatsApp customer-service window timer — ticks every second,
+  // shows a live HH:MM:SS countdown, and turns red when under 10 hours
+  // remain (matches the FMCG CRM behaviour).
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-    // Find last customer message
+  const sessionInfo = useMemo(() => {
+    // state: 'none' (no customer msg yet) | 'ok' | 'danger' (<10h) | 'expired'
+    if (!messages.length) {
+      return { state: "none" as const, expired: false, remaining: "" };
+    }
     const lastCustomerMsg = [...messages]
       .reverse()
       .find((m) => m.sender_type === "customer");
 
-    if (!lastCustomerMsg) return { expired: true, remaining: tTimer("noCustomerMessages") };
-
-    const hoursSince = differenceInHours(new Date(), new Date(lastCustomerMsg.created_at));
-    const expired = hoursSince >= 24;
-
-    if (expired) {
-      return { expired: true, remaining: tTimer("expired") };
+    if (!lastCustomerMsg) {
+      return {
+        state: "none" as const,
+        expired: true,
+        remaining: tTimer("noCustomerMessages"),
+      };
     }
 
-    const hoursLeft = 24 - hoursSince;
-    const remaining =
-      hoursLeft >= 1
-        ? tTimer("xhRemaining", { hours: Math.floor(hoursLeft) })
-        : tTimer("xmRemaining", { minutes: Math.floor(hoursLeft * 60) });
+    const remainingMs =
+      new Date(lastCustomerMsg.created_at).getTime() + 24 * 3600 * 1000 - nowTick;
 
-    return { expired, remaining };
-  }, [messages, tTimer]);
+    if (remainingMs <= 0) {
+      return { state: "expired" as const, expired: true, remaining: tTimer("expired") };
+    }
+
+    const total = Math.floor(remainingMs / 1000);
+    const hh = String(Math.floor(total / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+    const ss = String(total % 60).padStart(2, "0");
+    const danger = remainingMs < 10 * 3600 * 1000; // red under 10h
+
+    return {
+      state: (danger ? "danger" : "ok") as "danger" | "ok",
+      expired: false,
+      remaining: `${hh}:${mm}:${ss}`,
+    };
+  }, [messages, nowTick, tTimer]);
 
   // Store latest callback in a ref so fetchMessages doesn't need to
   // depend on `onMessagesLoaded` — otherwise parent re-renders cause
@@ -927,21 +946,29 @@ export function MessageThread({
               {contactHandle(contact)}
             </p>
           </div>
-          {/* Session timer badge — hidden on the narrowest phones so
-              the name + back arrow keep their room. */}
-          <Badge
-            variant="outline"
-            className={cn(
-              "ml-1 hidden gap-1 border-border text-[10px] sm:inline-flex sm:ml-2",
-              sessionInfo.expired ? "text-red-400" : "text-primary"
-            )}
-          >
-            <Clock className="h-3 w-3" />
-            {sessionInfo.remaining}
-          </Badge>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* 24h customer-service window timer — top-right. Live
+              HH:MM:SS countdown, red under 10h, grey when no window /
+              closed. */}
+          {sessionInfo.state !== "none" || sessionInfo.remaining ? (
+            <Badge
+              variant="outline"
+              title="WhatsApp 24-hour customer-service window. Turns red under 10 hours left."
+              className={cn(
+                "hidden gap-1 font-mono text-[11px] tabular-nums sm:inline-flex",
+                sessionInfo.state === "danger" || sessionInfo.state === "expired"
+                  ? "border-red-500/40 bg-red-500/10 text-red-400"
+                  : sessionInfo.state === "ok"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                    : "border-border text-muted-foreground",
+              )}
+            >
+              <Clock className="h-3 w-3" />
+              {sessionInfo.remaining}
+            </Badge>
+          ) : null}
           {/* Contact-panel toggle — desktop only. The contact sidebar
               eats a chunk of horizontal width that crowds the thread on
               smaller laptops; this lets agents reclaim it when they just
