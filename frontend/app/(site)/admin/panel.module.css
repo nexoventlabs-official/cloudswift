@@ -123,3 +123,33 @@
 .assetPrev { background: #0f172a; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .assetPrev img { width: 100%; height: 100%; object-fit: cover; }
 .grpTitle { color: rgba(255,255,255,0.55); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 26px 0 12px; }
+
+/* ── Notifications ──────────────────────────────────────────────── */
+.navLink { justify-content: space-between; }
+.navBadge {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 9999px;
+  background: #ef4444; color: #fff; font-size: 0.7rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.25);
+}
+.soundToggle {
+  border: 1px solid rgba(255,255,255,0.15); background: transparent; color: rgba(255,255,255,0.75);
+  border-radius: 9px; padding: 9px 12px; cursor: pointer; font-family: inherit; font-size: 0.82rem;
+  text-align: left; margin-bottom: 8px;
+}
+.soundToggle:hover { background: rgba(255,255,255,0.06); color: #fff; }
+
+.toast {
+  position: fixed; right: 20px; bottom: 20px; z-index: 1000;
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  max-width: 360px; padding: 14px 16px; border-radius: 12px;
+  background: #0f1b33; border: 1px solid rgba(37,99,235,0.5);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  animation: toastIn .22s ease-out;
+}
+.toast:hover { border-color: rgba(37,99,235,0.9); }
+.toastIcon { font-size: 1.4rem; flex-shrink: 0; }
+.toastBody { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.toastBody strong { color: #fff; font-size: 0.9rem; }
+.toastBody span { color: rgba(255,255,255,0.6); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
