@@ -1,0 +1,21 @@
+name: Keep backend warm
+
+# Render's free tier spins the backend down after ~15 min of inactivity,
+# and the next request then cold-starts (~30-50s) — which showed up as the
+# slow WhatsApp welcome Flow. This pings the health endpoint every 10 minutes
+# so the instance stays awake and the Flow sends in ~1-2s.
+#
+# Note: GitHub-scheduled runs can be delayed under load. For a hard SLA use
+# an external uptime monitor (UptimeRobot / cron-job.org) hitting the same URL.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health
+        run: curl -fsS --max-time 60 https://cloudswift.onrender.com/api/health || true
