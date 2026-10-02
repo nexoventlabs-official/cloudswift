@@ -42,6 +42,9 @@ export interface AutomationContext {
   agent_id?: string
   /** Button / list-row id the customer tapped, for interactive_reply. */
   interactive_reply_id?: string
+  /** Contact's WhatsApp phone (digits) — lets a send_webhook step forward
+   *  it to an external service (e.g. the CloudSwift welcome-Flow endpoint). */
+  phone?: string
 }
 
 export interface DispatchInput {

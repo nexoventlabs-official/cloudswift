@@ -950,6 +950,9 @@ async function processMessage(
         // Only set on interactive taps; drives the interactive_reply
         // trigger's exact-id match.
         interactive_reply_id: interactiveReplyId ?? undefined,
+        // Contact phone — forwarded by send_webhook steps (e.g. the
+        // CloudSwift welcome-Flow endpoint needs it to target the send).
+        phone: contactRecord.phone ?? undefined,
       },
     }).catch((err) => console.error('[automations] dispatch failed:', err))
   }
