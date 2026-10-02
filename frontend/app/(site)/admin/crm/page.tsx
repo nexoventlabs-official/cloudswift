@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { adminApi } from "@/lib/adminApi";
+import { phoneToFlagUrl } from "@/lib/countryFlag";
 import Loader from "@/components/Loader";
 import s from "../panel.module.css";
 
-type Conv = { _id: string; phone: string; name?: string; company?: string; lastMessage?: string; label?: string; botPaused?: boolean; optedOut?: boolean };
+type Conv = { _id: string; phone: string; name?: string; company?: string; lastMessage?: string; label?: string; botPaused?: boolean; optedOut?: boolean; unreadCount?: number };
 type MsgMeta = {
   kind?: string;
   headerKey?: string;
@@ -26,12 +27,28 @@ export default function CrmPage() {
   const [assets, setAssets] = useState<Record<string, string>>({});
   const bottom = useRef<HTMLDivElement>(null);
 
-  const loadConvs = useCallback(async () => {
-    setLoadingConvs(true);
-    try { const r = await adminApi.get("/crm/conversations?limit=80"); setConvs(r.data || []); } catch {}
-    setLoadingConvs(false);
+  const selPhoneRef = useRef<string | null>(null);
+  useEffect(() => { selPhoneRef.current = sel?.phone ?? null; }, [sel]);
+
+  const loadConvs = useCallback(async (silent = false) => {
+    if (!silent) setLoadingConvs(true);
+    try {
+      const r = await adminApi.get("/crm/conversations?limit=80");
+      const data: Conv[] = r.data || [];
+      // Never badge the conversation that's currently open — the agent is
+      // reading it, so its unread is effectively zero.
+      const active = selPhoneRef.current;
+      setConvs(active ? data.map((c) => (c.phone === active ? { ...c, unreadCount: 0 } : c)) : data);
+    } catch {}
+    if (!silent) setLoadingConvs(false);
   }, []);
   useEffect(() => { loadConvs(); }, [loadConvs]);
+
+  // Live refresh so unread counts + new conversations appear without a reload.
+  useEffect(() => {
+    const id = setInterval(() => loadConvs(true), 6000);
+    return () => clearInterval(id);
+  }, [loadConvs]);
 
   // Resolve header image keys → URLs (asset library) once
   useEffect(() => {
@@ -47,6 +64,9 @@ export default function CrmPage() {
 
   const openConv = useCallback(async (c: Conv) => {
     setSel(c);
+    // Clear the unread badge for this chat immediately (the server resets it
+    // too when we fetch the messages).
+    setConvs((cs) => cs.map((x) => (x.phone === c.phone ? { ...x, unreadCount: 0 } : x)));
     setLoadingMsgs(true);
     try { const r = await adminApi.get(`/crm/conversations/${c.phone}/messages`); setMsgs(r.data || []); } catch {}
     setLoadingMsgs(false);
@@ -119,9 +139,20 @@ export default function CrmPage() {
           {loadingConvs && <Loader />}
           {convs.map((c) => (
             <div key={c._id} className={`${s.convItem} ${sel?.phone === c.phone ? s.convActive : ""}`} onClick={() => openConv(c)}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <strong style={{ fontSize: "0.88rem" }}>{c.name || c.phone}</strong>
-                {c.botPaused && <span className={`${s.badge} ${s.warm}`}>HUMAN</span>}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                <strong style={{ fontSize: "0.88rem", display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  {phoneToFlagUrl(c.phone) && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={phoneToFlagUrl(c.phone)} alt="" style={{ width: 18, height: 13, borderRadius: 2, objectFit: "cover", flexShrink: 0 }} />
+                  )}
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name || c.phone}</span>
+                </strong>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  {c.botPaused && <span className={`${s.badge} ${s.warm}`}>HUMAN</span>}
+                  {(c.unreadCount || 0) > 0 && sel?.phone !== c.phone && (
+                    <span className={s.unreadDot}>{(c.unreadCount || 0) > 99 ? "99+" : c.unreadCount}</span>
+                  )}
+                </div>
               </div>
               <div className={s.muted} style={{ fontSize: "0.78rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMessage || "—"}</div>
             </div>
@@ -136,7 +167,13 @@ export default function CrmPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                 <div>
                   <strong>{sel.name || sel.phone}</strong>
-                  <div className={s.muted} style={{ fontSize: "0.78rem" }}>{sel.phone} {sel.company ? `· ${sel.company}` : ""}</div>
+                  <div className={s.muted} style={{ fontSize: "0.78rem", display: "flex", alignItems: "center", gap: 6 }}>
+                    {phoneToFlagUrl(sel.phone) && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={phoneToFlagUrl(sel.phone)} alt="" style={{ width: 18, height: 13, borderRadius: 2, objectFit: "cover" }} />
+                    )}
+                    <span>{sel.phone} {sel.company ? `· ${sel.company}` : ""}</span>
+                  </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <WindowTimer lastInboundAt={lastInboundAt(msgs)} />
