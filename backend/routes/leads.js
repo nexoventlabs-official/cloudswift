@@ -3,6 +3,8 @@ import Lead from '../models/Lead.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { sendText } from '../services/metaCloud.js';
 import { POST_CALL_MSG } from '../services/flowMessages.js';
+import { routeToScore } from '../services/assessment.js';
+import { logEvent } from '../services/funnel.js';
 import logger from '../services/logger.js';
 
 const router = express.Router();
@@ -64,13 +66,31 @@ router.get('/:id', async (req, res) => {
 // ── PATCH /api/leads/:id — update status, score, notes etc. ──────────────────
 router.patch('/:id', async (req, res) => {
   try {
-    const allowed = ['status', 'score', 'notes', 'company', 'name', 'seen', 'flowStep'];
+    // V2 adds manual sales-review controls: a rep can promote/demote the
+    // route and correct any captured answer, and clear the review flag.
+    const allowed = [
+      'status', 'score', 'notes', 'company', 'name', 'email', 'seen', 'flowStep',
+      'route', 'routeReason', 'fit', 'intent', 'urgency',
+      'requirement', 'trigger', 'timeline', 'role',
+      'contextAnswer', 'contextAnswerLabel',
+      'needsHumanReview', 'reviewReason', 'bookingSlot', 'callbackTime',
+      'source', 'campaign',
+    ];
     const update  = {};
     for (const k of allowed) {
       if (req.body[k] !== undefined) update[k] = req.body[k];
     }
+    // Manual route change (sales-review promotion/demotion): keep the legacy
+    // score in sync so existing dashboards stay correct, and stamp the time.
+    if (update.route !== undefined) {
+      if (update.score === undefined) update.score = routeToScore(update.route);
+      update.routedAt = new Date();
+    }
     const lead = await Lead.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
     if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
+    if (update.route !== undefined) {
+      await logEvent(lead, 'route_assigned', lead.flowStep, { route: update.route, manual: true });
+    }
     res.json({ success: true, data: lead });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

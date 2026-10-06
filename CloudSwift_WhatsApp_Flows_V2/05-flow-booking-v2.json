@@ -1,0 +1,30 @@
+{
+  "file": "05-flow-booking-v2",
+  "flowName": "Booking",
+  "version": "2.0",
+  "purpose": "Schedule the conversation without re-collecting identity information.",
+  "precondition": "Contact identity is already stored from the WhatsApp profile/contact flow.",
+  "body": "Great — choose a time that works for you.",
+  "fields": [
+    {
+      "field": "preferred_slot",
+      "label": "Preferred date / time",
+      "type": "booking-slot",
+      "required": true
+    }
+  ],
+  "reuse": [
+    "full_name",
+    "company",
+    "email",
+    "wa_number"
+  ],
+  "onSubmit": [
+    "Save selected slot.",
+    "Mark lead as Contacted / Meeting Requested.",
+    "Send confirmation.",
+    "Notify sales with the complete lead brief and selected slot."
+  ],
+  "fallback": "Send the configured scheduling link if native booking slots are unavailable.",
+  "rule": "Never ask again for full name, company or work email when already captured."
+}

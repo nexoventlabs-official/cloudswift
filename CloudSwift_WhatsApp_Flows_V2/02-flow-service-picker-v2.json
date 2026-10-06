@@ -1,0 +1,54 @@
+{
+  "file": "02-flow-service-picker-v2",
+  "flowName": "Requirement Picker",
+  "version": "2.0",
+  "type": "Native WhatsApp Flow",
+  "purpose": "Identify the prospect's primary requirement before qualification.",
+  "sentAt": "First touch and menu restart",
+  "cta": "Choose what you need",
+  "body": "Hi 👋 Welcome to CloudSwift. Tell us what you're looking to solve and we'll point you to the right cloud specialist.",
+  "field": {
+    "id": "requirement",
+    "type": "single-select",
+    "required": true,
+    "options": [
+      {
+        "id": "migration",
+        "label": "Cloud Migration / Modernisation",
+        "description": "Move, modernise or transform cloud workloads"
+      },
+      {
+        "id": "managed_cloud",
+        "label": "Managed Cloud / Support",
+        "description": "Ongoing cloud operations, monitoring or support"
+      },
+      {
+        "id": "finops",
+        "label": "Cloud Cost / FinOps",
+        "description": "Optimise cloud spend and improve cost visibility"
+      },
+      {
+        "id": "security",
+        "label": "Security / Compliance",
+        "description": "Cloud security, governance or compliance requirements"
+      },
+      {
+        "id": "m365",
+        "label": "Microsoft 365 / Dynamics",
+        "description": "Migration, implementation, licensing or optimisation"
+      },
+      {
+        "id": "ai",
+        "label": "AI / Automation",
+        "description": "Enterprise AI, automation or AI-ready infrastructure"
+      },
+      {
+        "id": "other",
+        "label": "Something else",
+        "description": "Tell us about another requirement"
+      }
+    ]
+  },
+  "onSubmit": "Store requirement and move to A1: Continue / Talk to specialist.",
+  "validationNote": "The portfolio coverage is supported by CloudSwift materials. The exact number/order of first-screen options should be monitored after launch and simplified if completion data shows friction."
+}

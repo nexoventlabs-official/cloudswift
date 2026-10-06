@@ -1,38 +1,65 @@
 /**
- * CloudSwift WhatsApp chatbot engine.
+ * CloudSwift WhatsApp chatbot engine — V2.
  *
- * Flow: ENTRY → A0 (service picker Flow) → A1 → Q1..Q4 → score → HOT/WARM/COLD
- * Safety nets: X1 invalid input · X2 drop-off resume (nurture cron) · X3 STOP · X4 human takeover.
+ * Journey:
+ *   A0 requirement picker → A1 (Continue / Talk to specialist)
+ *   → Q1 trigger → Q2 timeline → Q3 role → Q4 contextual (dynamic per requirement)
+ *   → assessment (Fit / Intent / Urgency)
+ *   → HIGH_PRIORITY | NURTURE_REVIEW | LOW_INTENT_SELF_SERVE
+ *
+ * V2 guarantees implemented here:
+ *   · No "500+ employees = HOT" rule anywhere.
+ *   · "Talk to specialist" is always available and is a HUMAN-intent signal
+ *     only — it alerts the team but never sets a commercial route.
+ *   · Q4 changes with the selected requirement.
+ *   · Every answer is stored individually (see models/Lead.js).
+ *   · Contact details are never requested twice — only missing fields are
+ *     asked, and booking collects the slot only.
+ *   · Drop-off resumes from the last incomplete step, not the beginning.
+ *   · Free text never breaks the journey; low-confidence replies are flagged.
+ *   · STOP / UNSUBSCRIBE / CANCEL halts automated follow-ups.
+ *   · Human takeover pauses the automation entirely.
+ *   · All copy, options, routing rules and nurture content come from config.
+ *   · Every funnel milestone (incl. drop-off step) is logged.
+ *
+ * Questions are sent as WhatsApp list/button messages rather than one fixed
+ * published Flow, because Q4 must vary per requirement and the menu must stay
+ * configurable without re-publishing anything on Meta.
  */
 import Lead from '../models/Lead.js';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import Setting from '../models/Setting.js';
 import FlowAsset from '../models/FlowAsset.js';
-import { scoreLead } from './scoring.js';
+import {
+  getConfig, findRequirement, requirementLabel, q4Branch, findOption, toRows, fill,
+} from '../config/v2Flow.js';
+import { assessLead, routeToScore, routeToLabel, routeLabelText } from './assessment.js';
+import { classifyFreeText, isOptOut, isPositiveSignal, isRestart } from './freeText.js';
+import { logEvent } from './funnel.js';
 import { emitLead, emitLeadUpdate, emitMessage } from './eventBus.js';
 import logger from './logger.js';
-import { sendText, sendButtons, sendImage, markRead } from './metaCloud.js';
-import { sendServiceFlow, sendQualifyFlow, sendContactFlow, sendBookingFlow } from './flowService.js';
-import {
-  WELCOME_BODY, VALID_TOPICS, QUALIFY_FLOW_BODY, BOOKING_FLOW_BODY, CONTACT_FLOW_BODY,
-  A1_BODY, A1_BUTTONS,
-  Q1_BODY, Q1_BUTTONS, SIZE_MAP,
-  Q2_BODY, Q2_BUTTONS, SITUATION_MAP,
-  Q3_BODY, Q3_BUTTONS, TIMELINE_MAP,
-  Q4_BODY, Q4_BUTTONS, ROLE_MAP,
-  A_H_BODY, H1_BODY, H2_BODY, H2_BUTTONS, H3_BODY, H4_BODY, H11_BODY,
-  HOT_CHAT_HANDOFF, HOT_SALES_BRIEF,
-  A_W_BODY, N1_BODY, N1_BUTTONS, WARM_CONFIRM, X6_BODY,
-  A_C_BODY, COLD_BUTTONS, COLD_FINISH_BODY,
-  X1_BODY, X1_BUTTONS, X3_STOP_BODY,
-  GENERAL_BODY, GENERAL_BUTTONS, BOOKING_CONFIRM,
-  isStopKeyword, isPositiveReply,
-} from './flowMessages.js';
+import { sendText, sendButtons, sendList, sendImage, markRead } from './metaCloud.js';
+import { sendContactFlow } from './flowService.js';
 
-const RESUME_HOURS = Number(process.env.RESUME_HOURS || 20);
+// ── Question plumbing ────────────────────────────────────────────────────────
+const Q_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
+const Q_STEP  = { Q1: 'qualify_q1', Q2: 'qualify_q2', Q3: 'qualify_q3', Q4: 'qualify_q4' };
+const STEP_Q  = { qualify_q1: 'Q1', qualify_q2: 'Q2', qualify_q3: 'Q3', qualify_q4: 'Q4' };
+const Q_FIELD = { Q1: 'trigger', Q2: 'timeline', Q3: 'role', Q4: 'context' };
 
-// ── Small helpers ─────────────────────────────────────────────────────────────
+// Contact field → Lead property. Used by the "never ask twice" logic.
+const CONTACT_FIELD = { full_name: 'name', company: 'company', email: 'email' };
+const CONTACT_STEP  = { full_name: 'awaiting_full_name', company: 'awaiting_company', email: 'awaiting_email' };
+const STEP_CONTACT  = { awaiting_full_name: 'full_name', awaiting_company: 'company', awaiting_email: 'email' };
+
+// Requirement → legacy `topic`, so V1 dashboards/content keep working.
+const REQ_TO_TOPIC = {
+  migration: 'azure_migration', managed_cloud: 'managed_cloud', finops: 'other',
+  security: 'security', m365: 'm365', ai: 'other', other: 'other',
+};
+
+// ── Small helpers ────────────────────────────────────────────────────────────
 async function getSetting(key, fallback = '') {
   try { const s = await Setting.findOne({ key }); return s?.value || fallback; }
   catch { return fallback; }
@@ -41,14 +68,17 @@ async function assetUrl(key) {
   try { const a = await FlowAsset.findOne({ key }); return a?.url || ''; }
   catch { return ''; }
 }
-function setAwaiting(lead) {
-  lead.resumeAt = new Date(Date.now() + RESUME_HOURS * 3600 * 1000);
+function setAwaiting(lead, cfg) {
+  const hours = Number(cfg?.safety?.resumeAfterHours ?? 20);
+  lead.resumeAt = new Date(Date.now() + hours * 3600 * 1000);
   lead.resumeNudgeSent = false;
 }
 function clearAwaiting(lead) {
   lead.resumeAt = undefined;
   lead.resumeNudgeSent = false;
 }
+const titles = (arr = []) => arr.map((b) => b.title);
+const looksLikeEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
 
 async function upsertConversation(phone, name, lastMessage) {
   return Conversation.findOneAndUpdate(
@@ -69,8 +99,16 @@ async function logMessage(phone, convId, direction, type, body, waMessageId, raw
     return msg;
   } catch (err) { logger.warn('logMessage failed', { error: err.message }); }
 }
-// Extract just the button titles for CRM rich rendering
-const titles = (arr = []) => arr.map((b) => b.title);
+async function logOutbound(conv, phone, body, meta = {}) {
+  try {
+    let type = 'text';
+    if (meta.kind === 'flow') type = 'flow';
+    else if (meta.kind === 'buttons' || meta.kind === 'list') type = 'button';
+    else if (meta.headerKey && !meta.buttons && !meta.flowCta) type = 'image';
+    if (conv?._id) await logMessage(phone, conv._id, 'outbound', type, body, '', null, meta);
+    await Conversation.updateOne({ phone }, { $set: { lastMessage: (body || '').slice(0, 120), lastMessageAt: new Date() } });
+  } catch {}
+}
 async function notifySalesRep(text) {
   const repNumber = await getSetting('salesRepWaNumber', process.env.SALES_REP_WA_NUMBER || '');
   if (!repNumber) { logger.warn('Sales rep WA number not configured'); return; }
@@ -78,624 +116,752 @@ async function notifySalesRep(text) {
   catch (err) { logger.error('Sales rep notification failed', { error: err.message }); }
 }
 
+/** Send a list question and log it richly for the CRM. */
+async function sendQuestionList(conv, lead, { prompt, listButton, sectionTitle, options, headerKey }) {
+  const rows = toRows(options);
+  await sendList(lead.phone, prompt, String(listButton || 'Select').slice(0, 20), [
+    { title: String(sectionTitle || 'Options').slice(0, 24), rows },
+  ]);
+  await logOutbound(conv, lead.phone, prompt, {
+    kind: 'list', headerKey: headerKey || undefined, buttons: rows.map((r) => r.title),
+  });
+}
+
 // ── Main entry point ────────────────────────────────────────────────────────
 export async function handleMessage(msg) {
   const { phone, type, text, selectedId, name, waMessageId, rawPayload, referral, flowResponse } = msg;
+  const cfg = await getConfig();
 
   if (waMessageId) markRead(waMessageId).catch(() => {});
 
-  const preview = text || selectedId || (flowResponse ? '[flow submitted]' : '…');
+  const preview = text || selectedId || (flowResponse ? '[form submitted]' : '…');
   const conv = await upsertConversation(phone, name, preview);
-  // Mark button/list taps and flow submissions so the CRM can show a reply chip
+
   let inboundMeta = {};
   if (type === 'button' || type === 'list') inboundMeta = { reply: true, replyTitle: preview };
   else if (type === 'flow') inboundMeta = { reply: true, flowSubmission: flowResponse || {} };
   await logMessage(phone, conv._id, 'inbound', type, preview, waMessageId, rawPayload, inboundMeta);
 
-  // X4 · Human takeover — bot stays silent
+  // Human takeover — automation stays completely silent.
   if (conv.botPaused) { logger.info('Bot paused (human handling)', { phone }); return; }
 
-  // X3 · STOP / opt-out
-  if (type === 'text' && isStopKeyword(text)) { return optOut(phone, conv); }
+  // STOP / UNSUBSCRIBE / CANCEL
+  if (type === 'text' && isOptOut(text, cfg)) return optOut(phone, conv, cfg);
 
   let lead = await Lead.findOne({ phone });
 
-  // Opted-out contact: stay silent unless they clearly restart
+  // Opted-out contacts stay silent unless they clearly restart.
   if (conv.optedOut || lead?.optedOut) {
-    const restart = type === 'text' && /^(hi|hello|start|menu|hey)\b/i.test((text || '').trim());
-    if (!restart) return;
+    if (!(type === 'text' && isRestart(text))) return;
     await Conversation.updateOne({ phone }, { $set: { optedOut: false } });
     if (lead) { lead.optedOut = false; await lead.save(); }
   }
 
-  // ── New contact → ENTRY ─────────────────────────────────────────────────
+  // ── New contact → entry ────────────────────────────────────────────────
   if (!lead) {
     lead = await Lead.create({
       phone,
       name: name || '',
+      profileName: name || '',
       firstMessage: text || '',
-      flowStep: 'entry',
+      flowStep: 'requirement_sent',
       score: 'NEW',
+      entryAt: new Date(),
       channel: hasReferral(referral) ? 'meta_ctwa' : 'direct',
+      source: hasReferral(referral) ? 'meta_ad' : 'direct',
+      campaign: referral?.headline || referral?.sourceId || '',
       referral: referral || {},
     });
     emitLead(lead);
-    return startFlow(lead, conv);
+    await logEvent(lead, 'entry', 'entry', { firstMessage: text || '' });
+    return startFlow(lead, conv, cfg);
   }
 
-  // Capture ad referral if it arrived on a later message and wasn't stored
+  // Backfill attribution / profile name if it arrived later.
+  let dirty = false;
   if (hasReferral(referral) && !lead.referral?.sourceId && !lead.referral?.sourceUrl) {
-    lead.referral = referral;
-    lead.channel = 'meta_ctwa';
-    await lead.save();
+    lead.referral = referral; lead.channel = 'meta_ctwa'; lead.source = lead.source || 'meta_ad';
+    lead.campaign = lead.campaign || referral?.headline || referral?.sourceId || '';
+    dirty = true;
   }
+  if (name && !lead.profileName) { lead.profileName = name; dirty = true; }
+  if (dirty) await lead.save();
 
-  // ── Global commands (work at any step) ──────────────────────────────────
-  if (selectedId === 'x_menu' || selectedId === 'cold_menu') return startFlow(lead, conv);
-  if (selectedId === 'a1_talk_person') { lead.talkToPerson = true; await lead.save(); return goHot(lead, conv, 'Requested a person'); }
-  if (selectedId === 'x_retry' || selectedId === 'x_resume') return resendStep(lead, conv);
+  // ── Global commands (available at any step) ────────────────────────────
+  if (selectedId === 'main_menu') return startFlow(lead, conv, cfg);
+  if (selectedId === 'talk_specialist') return handleHumanRequest(lead, conv, cfg);
+  if (selectedId === 'retry' || selectedId === 'resume') return resendStep(lead, conv, cfg);
+  if (selectedId === 'finish') return handleFinish(lead, conv, cfg);
 
-  // ── Flow submission ────────────────────────────────────────────────────
+  // ── Native Flow submissions (contact details only in V2) ───────────────
   if (type === 'flow' && flowResponse) {
-    // Booking form: business_name / phone_number ; contact form: company + email/full_name
-    // qualification: size/situation/timeline/role ; service picker: service
-    if (flowResponse.business_name || flowResponse.phone_number || flowResponse.whatsapp_number) {
-      return handleBookingSubmission(lead, conv, flowResponse);
+    if (flowResponse.full_name || flowResponse.company || flowResponse.email) {
+      return handleContactSubmission(lead, conv, cfg, flowResponse);
     }
-    if (flowResponse.email || flowResponse.full_name) {
-      return handleContactSubmission(lead, conv, flowResponse);
-    }
-    if (flowResponse.company_size || flowResponse.situation || flowResponse.timeline || flowResponse.role) {
-      return handleQualifySubmission(lead, conv, flowResponse);
-    }
-    return handleServiceSelection(lead, conv, flowResponse);
+    // Unexpected/legacy submission — keep it, don't break the journey.
+    await recordFreeText(lead, JSON.stringify(flowResponse).slice(0, 500), lead.flowStep, null);
+    return resendStep(lead, conv, cfg);
   }
 
-  // Nurture re-entry: a positive reply during/after nurture → escalate to HOT
-  if (['warm_checklist', 'n1_sent', 'nurture_d3', 'nurture_d7', 'nurture_d21', 'warm_declined'].includes(lead.flowStep)
-      && type === 'text' && isPositiveReply(text)) {
-    return goHot(lead, conv, 'Positive reply during nurture');
+  // Positive buying signal during/after nurture or self-serve → escalate.
+  const nurtureSteps = ['nurture_consent_sent', 'nurture_active', 'nurture_declined', 'nurture_d3', 'nurture_d7', 'nurture_d21', 'self_serve_sent', 'self_serve_done', 'completed'];
+  if (nurtureSteps.includes(lead.flowStep) && type === 'text' && isPositiveSignal(text, cfg)) {
+    return escalateFromNurture(lead, conv, cfg, text);
   }
 
-  // ── Route by current step ────────────────────────────────────────────────
+  // ── Route by current step ──────────────────────────────────────────────
   switch (lead.flowStep) {
-    case 'entry':
-    case 'a0_sent':                return handleInvalid(lead, conv, 'a0');
-    case 'a1_sent':                return handleA1(lead, conv, selectedId);
-    case 'qualify_sent':           return handleInvalid(lead, conv, 'qualify');
-    case 'q1_sent':                return handleQ1(lead, conv, selectedId);
-    case 'q2_sent':                return handleQ2(lead, conv, selectedId);
-    case 'q3_sent':                return handleQ3(lead, conv, selectedId);
-    case 'q4_sent':                return handleQ4(lead, conv, selectedId);
-    case 'awaiting_name_company':  return handleNameCompany(lead, conv, text);
-    case 'h2_sent':                return handleH2(lead, conv, selectedId);
-    case 'awaiting_booking':       return handleInvalid(lead, conv, 'booking');
-    case 'awaiting_callback_time': return handleCallbackTime(lead, conv, text);
-    case 'n1_sent':                return handleN1(lead, conv, selectedId);
-    case 'cold_guide':             return handleCold(lead, conv, selectedId);
-    default:                       return handleGeneral(lead, conv, preview);
+    case 'requirement_sent':       return handleRequirementReply(lead, conv, cfg, selectedId, text);
+    case 'a1_sent_v2':             return handleA1(lead, conv, cfg, selectedId, text);
+    case 'qualify_q1':
+    case 'qualify_q2':
+    case 'qualify_q3':
+    case 'qualify_q4':             return handleAnswer(lead, conv, cfg, STEP_Q[lead.flowStep], selectedId, text);
+    case 'qualify_q4_text':        return handleQ4Text(lead, conv, cfg, text);
+    case 'awaiting_full_name':
+    case 'awaiting_company':
+    case 'awaiting_email':         return handleContactAnswer(lead, conv, cfg, STEP_CONTACT[lead.flowStep], text);
+    case 'contact_flow_sent':      return handleInvalid(lead, conv, cfg);
+    case 'high_priority_options':  return handleHighPriorityChoice(lead, conv, cfg, selectedId);
+    case 'awaiting_booking_slot':  return handleBookingSlot(lead, conv, cfg, text);
+    case 'awaiting_callback_time': return handleCallbackTime(lead, conv, cfg, text);
+    case 'nurture_consent_sent':   return handleNurtureConsent(lead, conv, cfg, selectedId);
+    case 'self_serve_sent':        return handleSelfServeChoice(lead, conv, cfg, selectedId);
+    default:                       return handleGeneral(lead, conv, cfg, preview);
   }
 }
 
-// ── ENTRY / restart ───────────────────────────────────────────────────────
-async function startFlow(lead, conv) {
-  lead.flowStep = 'a0_sent';
+// ── A0 · Entry / requirement picker ─────────────────────────────────────────
+async function startFlow(lead, conv, cfg) {
+  lead.flowStep = 'requirement_sent';
   lead.invalidCount = 0;
-  setAwaiting(lead);
+  setAwaiting(lead, cfg);
   await lead.save();
-  const sent = await sendServiceFlow(lead.phone, lead.name);
-  if (!sent) {
-    // Fallback if the Flow isn't configured — plain text prompt
-    await sendText(lead.phone, WELCOME_BODY(lead.name) + '\n\nReply with the service you need: Azure, Microsoft 365, Managed cloud, Security, or Other.');
+  await sendQuestionList(conv, lead, {
+    prompt: cfg.welcome.body,
+    listButton: cfg.welcome.listButton,
+    sectionTitle: cfg.welcome.sectionTitle,
+    options: cfg.requirements,
+    headerKey: cfg.welcome.headerKey,
+  });
+}
+
+async function handleRequirementReply(lead, conv, cfg, selectedId, text) {
+  let chosen = selectedId ? findRequirement(cfg, selectedId) : null;
+
+  if (!chosen && text) {
+    const c = classifyFreeText(text, cfg, { expect: 'requirement' });
+    await recordFreeText(lead, text, 'requirement_sent', c);
+    if (c.accepted) chosen = findRequirement(cfg, c.value);
   }
-  await logOutbound(conv, lead.phone, WELCOME_BODY(lead.name), {
-    kind: 'flow', headerKey: 'welcome_header', flowCta: 'Choose service',
-  });
-}
+  if (!chosen) return handleInvalid(lead, conv, cfg);
 
-// ── A0 · service selected in the Flow ───────────────────────────────────────
-async function handleServiceSelection(lead, conv, flowResponse) {
-  const service = String(flowResponse.service || flowResponse.topic || flowResponse.selected_service || '').trim();
-  if (!VALID_TOPICS.includes(service)) return handleInvalid(lead, conv, 'a0');
-
-  lead.topic = service;
-  lead.flowStep = 'a1_sent';
+  lead.requirement = chosen.id;
+  lead.requirementLabel = chosen.label;
+  lead.topic = REQ_TO_TOPIC[chosen.id] || 'other';
+  lead.requirementSelectedAt = new Date();
   lead.invalidCount = 0;
-  setAwaiting(lead);
+  lead.flowStep = 'a1_sent_v2';
+  setAwaiting(lead, cfg);
   await lead.save();
-  await sendA1(lead.phone);
-  await logOutbound(conv, lead.phone, A1_BODY, {
-    kind: 'buttons', headerKey: 'a1_header', buttons: titles(A1_BUTTONS),
+  emitLeadUpdate(lead);
+  await logEvent(lead, 'requirement_selected', 'requirement_sent', { requirement: chosen.id });
+
+  const body = fill(cfg.a1.bodyTemplate, { requirement_label: chosen.label });
+  const img = await assetUrl(cfg.welcome.headerKey);
+  await sendButtons(lead.phone, body, cfg.a1.buttons, img || '');
+  await logOutbound(conv, lead.phone, body, {
+    kind: 'buttons', headerKey: img ? cfg.welcome.headerKey : undefined, buttons: titles(cfg.a1.buttons),
   });
 }
 
-// Send the A1 (Continue / Talk to a person) message with its optional image header
-async function sendA1(phone) {
-  const img = await assetUrl('a1_header');
-  return sendButtons(phone, A1_BODY, A1_BUTTONS, img || '');
-}
-// H2 (Book / Callback / Chat) with optional image header
-async function sendH2(phone, name) {
-  const img = await assetUrl('h2_header');
-  return sendButtons(phone, H2_BODY(name || 'there'), H2_BUTTONS, img || '');
-}
-// N1 (warm nurture permission) with optional image header
-async function sendN1(phone) {
-  const img = await assetUrl('n1_header');
-  return sendButtons(phone, N1_BODY, N1_BUTTONS, img || '');
+async function handleA1(lead, conv, cfg, selectedId, text) {
+  if (selectedId === 'continue' || (text && /^(continue|yes|ok|start)\b/i.test(text.trim()))) {
+    return startQualification(lead, conv, cfg);
+  }
+  if (text) await recordFreeText(lead, text, 'a1_sent_v2', null);
+  return handleInvalid(lead, conv, cfg);
 }
 
-// ── A1 · Continue / Talk to a person ─────────────────────────────────────────
-async function handleA1(lead, conv, selectedId) {
-  if (selectedId === 'a1_continue') {
-    // Send the qualification Flow (size + conditional situation/timeline/role in one form).
-    // 500+ hides the rest inside the Flow and we skip to HOT on submit. Buttons are the fallback.
-    let sentFlow = false;
-    try { sentFlow = await sendQualifyFlow(lead.phone, lead.name); }
-    catch (e) { logger.warn('Qualify flow send failed, falling back to buttons', { error: e.message }); }
-    lead.invalidCount = 0;
-    if (sentFlow) {
-      lead.flowStep = 'qualify_sent';
-      setAwaiting(lead);
+// ── Qualification ───────────────────────────────────────────────────────────
+async function startQualification(lead, conv, cfg) {
+  lead.qualificationStartedAt = lead.qualificationStartedAt || new Date();
+  lead.invalidCount = 0;
+  await lead.save();
+  await logEvent(lead, 'qualification_started', 'qualify_q1');
+  return sendQuestion(lead, conv, cfg, 'Q1');
+}
+
+async function sendQuestion(lead, conv, cfg, qid) {
+  if (qid === 'Q4') {
+    const branch = q4Branch(cfg, lead.requirement);
+    if (!branch) return runAssessment(lead, conv, cfg);
+
+    lead.contextQuestionId = `Q4:${lead.requirement}`;
+    if (branch.type === 'short-text' || !branch.options?.length) {
+      lead.flowStep = 'qualify_q4_text';
+      setAwaiting(lead, cfg);
       await lead.save();
-      return logOutbound(conv, lead.phone, QUALIFY_FLOW_BODY(lead.name), {
-        kind: 'flow', headerKey: 'qualify_header', flowCta: 'Answer questions',
-      });
+      await sendText(lead.phone, branch.prompt);
+      return logOutbound(conv, lead.phone, branch.prompt);
     }
-    lead.flowStep = 'q1_sent';
-    setAwaiting(lead);
+    lead.flowStep = 'qualify_q4';
+    setAwaiting(lead, cfg);
     await lead.save();
-    await sendButtons(lead.phone, Q1_BODY, Q1_BUTTONS);
-    return logOutbound(conv, lead.phone, Q1_BODY, {
-      kind: 'buttons', buttons: titles(Q1_BUTTONS),
+    return sendQuestionList(conv, lead, {
+      prompt: branch.prompt,
+      listButton: cfg.qualification.Q4.listButton,
+      sectionTitle: cfg.qualification.Q4.sectionTitle,
+      options: branch.options,
     });
   }
-  // a1_talk_person handled globally
-  return handleInvalid(lead, conv, 'a1');
+
+  const q = cfg.qualification[qid];
+  lead.flowStep = Q_STEP[qid];
+  setAwaiting(lead, cfg);
+  await lead.save();
+  return sendQuestionList(conv, lead, {
+    prompt: q.prompt,
+    listButton: q.listButton,
+    sectionTitle: q.sectionTitle,
+    options: q.options,
+  });
 }
 
-// ── Qualification Flow submission (all 4 answers at once) ────────────────────
-async function handleQualifySubmission(lead, conv, resp) {
-  const sizes  = ['under_100', '100_500', '500_plus'];
-  const sits   = ['exploring', 'first_eval', 'switching'];
-  const times  = ['this_quarter', 'next_quarter', 'six_months'];
-  const roles  = ['decision_maker', 'evaluating_team'];
+/** Generic Q1–Q4 answer handler (list selection or free text). */
+async function handleAnswer(lead, conv, cfg, qid, selectedId, text) {
+  const isQ4 = qid === 'Q4';
+  const branch = isQ4 ? q4Branch(cfg, lead.requirement) : null;
+  const options = isQ4 ? branch?.options || [] : cfg.qualification[qid].options;
+  const field = Q_FIELD[qid];
 
-  if (sizes.includes(resp.company_size)) lead.companySize = resp.company_size;
-  lead.invalidCount = 0;
+  let opt = selectedId ? findOption(options, selectedId) : null;
 
-  // 500+ hid the rest of the questions inside the flow → skip straight to HOT
-  if (lead.companySize === '500_plus') {
-    await lead.save();
-    return goHot(lead, conv, 'Enterprise (500+) — skipped Q2-Q4');
+  if (!opt && text) {
+    if (isQ4) {
+      // Try a label match; otherwise keep the raw answer — Q4 is contextual,
+      // so a free-text answer is still useful and must not block the journey.
+      const t = text.toLowerCase().trim();
+      opt = options.find((o) => t === String(o.label || '').toLowerCase() || t === String(o.title || '').toLowerCase()) || null;
+      if (!opt) {
+        await recordFreeText(lead, text, lead.flowStep, { matched: false, confidence: 0, accepted: false });
+        lead.contextAnswer = '';
+        lead.contextAnswerLabel = text.slice(0, 300);
+        lead.invalidCount = 0;
+        await lead.save();
+        return runAssessment(lead, conv, cfg);
+      }
+    } else {
+      const c = classifyFreeText(text, cfg, { expect: field });
+      await recordFreeText(lead, text, lead.flowStep, c);
+      if (c.accepted) opt = findOption(options, c.value);
+    }
   }
 
-  if (sits.includes(resp.situation))  lead.situation = resp.situation;
-  if (times.includes(resp.timeline))  lead.timeline  = resp.timeline;
-  if (roles.includes(resp.role))      lead.role      = resp.role;
+  if (!opt) return handleInvalid(lead, conv, cfg);
 
-  if (!lead.companySize || !lead.situation || !lead.timeline || !lead.role) {
-    return handleInvalid(lead, conv, 'qualify');
-  }
-
-  lead.invalidCount = 0;
-  const score = scoreLead({
-    companySize: lead.companySize, situation: lead.situation,
-    timeline: lead.timeline, role: lead.role, talkToPerson: lead.talkToPerson,
-  });
-  lead.score = score;
-  lead.scoreTimestamp = new Date();
-  lead.flowStep = 'scored';
-  await lead.save();
-  emitLeadUpdate(lead);
-
-  if (score === 'HOT')  return goHot(lead, conv, 'Qualified HOT (flow)');
-  if (score === 'WARM') return goWarm(lead, conv);
-  return goCold(lead, conv);
-}
-
-// ── Q1 · company size (500+ short-circuits to HOT) ───────────────────────────
-async function handleQ1(lead, conv, selectedId) {
-  const size = SIZE_MAP[selectedId];
-  if (!size) return handleInvalid(lead, conv, 'q1');
-  lead.companySize = size;
-  lead.invalidCount = 0;
-  // 500+ → skip the rest of the questions and go straight to HOT
-  if (size === '500_plus') { await lead.save(); return goHot(lead, conv, 'Enterprise (500+) — skipped Q2-Q4'); }
-
-  // Otherwise collect situation/timeline/role via the multi-screen Flow (buttons fallback)
-  let sentFlow = false;
-  try { sentFlow = await sendQualifyFlow(lead.phone, lead.name); }
-  catch (e) { logger.warn('Qualify flow send failed, falling back to buttons', { error: e.message }); }
-  if (sentFlow) {
-    lead.flowStep = 'qualify_sent';
-    setAwaiting(lead);
-    await lead.save();
-    return logOutbound(conv, lead.phone, QUALIFY_FLOW_BODY(lead.name), {
-      kind: 'flow', headerKey: 'qualify_header', flowCta: 'Answer questions',
-    });
-  }
-  lead.flowStep = 'q2_sent';
-  setAwaiting(lead);
-  await lead.save();
-  await sendButtons(lead.phone, Q2_BODY, Q2_BUTTONS);
-  return logOutbound(conv, lead.phone, Q2_BODY, {
-    kind: 'buttons', buttons: titles(Q2_BUTTONS),
-  });
-}
-
-// ── Q2 · situation ───────────────────────────────────────────────────────────
-async function handleQ2(lead, conv, selectedId) {
-  const situation = SITUATION_MAP[selectedId];
-  if (!situation) return handleInvalid(lead, conv, 'q2');
-  lead.situation = situation;
-  lead.invalidCount = 0;
-  lead.flowStep = 'q3_sent';
-  setAwaiting(lead);
-  await lead.save();
-  await sendButtons(lead.phone, Q3_BODY, Q3_BUTTONS);
-  return logOutbound(conv, lead.phone, Q3_BODY, {
-    kind: 'buttons', buttons: titles(Q3_BUTTONS),
-  });
-}
-
-// ── Q3 · timeline ────────────────────────────────────────────────────────────
-async function handleQ3(lead, conv, selectedId) {
-  const timeline = TIMELINE_MAP[selectedId];
-  if (!timeline) return handleInvalid(lead, conv, 'q3');
-  lead.timeline = timeline;
-  lead.invalidCount = 0;
-  lead.flowStep = 'q4_sent';
-  setAwaiting(lead);
-  await lead.save();
-  await sendButtons(lead.phone, Q4_BODY, Q4_BUTTONS);
-  return logOutbound(conv, lead.phone, Q4_BODY, {
-    kind: 'buttons', buttons: titles(Q4_BUTTONS),
-  });
-}
-
-// ── Q4 · role → score ────────────────────────────────────────────────────────
-async function handleQ4(lead, conv, selectedId) {
-  const role = ROLE_MAP[selectedId];
-  if (!role) return handleInvalid(lead, conv, 'q4');
-  lead.role = role;
-  lead.invalidCount = 0;
-
-  const score = scoreLead({
-    companySize: lead.companySize, situation: lead.situation,
-    timeline: lead.timeline, role: lead.role, talkToPerson: lead.talkToPerson,
-  });
-  lead.score = score;
-  lead.scoreTimestamp = new Date();
-  lead.flowStep = 'scored';
-  await lead.save();
-  emitLeadUpdate(lead);
-
-  if (score === 'HOT')  return goHot(lead, conv, 'Qualified HOT');
-  if (score === 'WARM') return goWarm(lead, conv);
-  return goCold(lead, conv);
-}
-
-// ── HOT path ─────────────────────────────────────────────────────────────────
-async function goHot(lead, conv, reason = '') {
-  lead.score = 'HOT';
-  lead.scoreTimestamp = new Date();
-  lead.status = 'Contacted';
-  lead.flowStep = 'awaiting_name_company';
-  setAwaiting(lead);
-  await lead.save();
-  emitLeadUpdate(lead);
-  await Conversation.updateOne({ phone: lead.phone }, { $set: { label: 'hot', leadId: lead._id } });
-
-  await sendText(lead.phone, A_H_BODY);
-  await logOutbound(conv, lead.phone, A_H_BODY);
-  // Collect name + company + email via a native form flow; fall back to a text prompt
-  let sentForm = false;
-  try { sentForm = await sendContactFlow(lead.phone, lead.name); }
-  catch (e) { logger.warn('Contact flow send failed, falling back to text', { error: e.message }); }
-  if (sentForm) {
-    await logOutbound(conv, lead.phone, CONTACT_FLOW_BODY(lead.name), {
-      kind: 'flow', headerKey: 'hot_lead_header', flowCta: 'Share your details',
-    });
+  if (isQ4) {
+    lead.contextAnswer = opt.id;
+    lead.contextAnswerLabel = opt.label || opt.title || opt.id;
   } else {
-    const img = await assetUrl('hot_lead_header');
-    if (img) await sendImage(lead.phone, img, H1_BODY);
-    else     await sendText(lead.phone, H1_BODY);
-    await logOutbound(conv, lead.phone, H1_BODY, img ? { headerKey: 'hot_lead_header' } : {});
+    lead[field] = opt.id;
   }
-  logger.info('HOT lead', { phone: lead.phone, reason });
+  lead.invalidCount = 0;
+  await lead.save();
+
+  const nextQid = Q_ORDER[Q_ORDER.indexOf(qid) + 1];
+  if (!nextQid) return runAssessment(lead, conv, cfg);
+  return sendQuestion(lead, conv, cfg, nextQid);
 }
 
-// ── Contact form (name / company / email) submission ─────────────────────────
-async function handleContactSubmission(lead, conv, resp) {
-  if (resp.full_name) lead.name    = String(resp.full_name).slice(0, 120);
-  if (resp.company)   lead.company = String(resp.company).slice(0, 120);
-  if (resp.email)     lead.email   = String(resp.email).slice(0, 160);
-  lead.flowStep = 'h2_sent';
+/** Q4 for the 'other' requirement (short text). */
+async function handleQ4Text(lead, conv, cfg, text) {
+  const body = (text || '').trim();
+  if (!body) return handleInvalid(lead, conv, cfg);
+  lead.contextAnswer = 'free_text';
+  lead.contextAnswerLabel = body.slice(0, 300);
   lead.invalidCount = 0;
-  setAwaiting(lead);
+  await lead.save();
+  await recordFreeText(lead, body, 'qualify_q4_text', { matched: true, confidence: 1, accepted: true, field: 'context' });
+  return runAssessment(lead, conv, cfg);
+}
+
+// ── Assessment + routing ────────────────────────────────────────────────────
+async function runAssessment(lead, conv, cfg) {
+  lead.qualificationCompletedAt = new Date();
+  await logEvent(lead, 'qualification_completed', 'assessed', {
+    requirement: lead.requirement, trigger: lead.trigger, timeline: lead.timeline,
+    role: lead.role, context: lead.contextAnswer || lead.contextAnswerLabel,
+  });
+
+  const a = assessLead(lead, cfg);
+  lead.fit = a.fit;
+  lead.intent = a.intent;
+  lead.urgency = a.urgency;
+  lead.route = a.route;
+  lead.routeReason = a.reason;
+  lead.assessedAt = new Date();
+  lead.routedAt = new Date();
+  lead.score = routeToScore(a.route);          // legacy compatibility
+  lead.scoreTimestamp = new Date();
+  lead.flowStep = 'assessed';
   await lead.save();
   emitLeadUpdate(lead);
-  await Conversation.updateOne({ phone: lead.phone }, { $set: { name: lead.name || undefined, company: lead.company || undefined } });
-  await notifySalesRep(HOT_SALES_BRIEF(lead));
-  await sendH2(lead.phone, lead.name);
-  return logOutbound(conv, lead.phone, H2_BODY(lead.name || 'there'), {
-    kind: 'buttons', headerKey: 'h2_header', buttons: titles(H2_BUTTONS),
+
+  await Conversation.updateOne(
+    { phone: lead.phone },
+    { $set: { label: routeToLabel(a.route), leadId: lead._id } }
+  );
+  await logEvent(lead, 'route_assigned', 'assessed', {
+    fit: a.fit, intent: a.intent, urgency: a.urgency, route: a.route, reason: a.reason,
   });
+  logger.info('Lead routed', { phone: lead.phone, ...a });
+
+  if (a.route === 'HIGH_PRIORITY') return routeHighPriority(lead, conv, cfg);
+  if (a.route === 'NURTURE_REVIEW') return routeNurture(lead, conv, cfg);
+  return routeSelfServe(lead, conv, cfg);
 }
 
-async function handleNameCompany(lead, conv, text) {
-  const parsed = parseNameCompany(text);
-  if (parsed.name) lead.name = parsed.name;
-  if (parsed.company) lead.company = parsed.company;
-  lead.flowStep = 'h2_sent';
-  lead.invalidCount = 0;
-  setAwaiting(lead);
-  await lead.save();
-  emitLeadUpdate(lead);
-  await Conversation.updateOne({ phone: lead.phone }, { $set: { name: lead.name || undefined, company: lead.company || undefined } });
-
-  // Full brief to sales rep now that we have identity
-  await notifySalesRep(HOT_SALES_BRIEF(lead));
-
-  await sendH2(lead.phone, lead.name);
-  return logOutbound(conv, lead.phone, H2_BODY(lead.name || 'there'), {
-    kind: 'buttons', headerKey: 'h2_header', buttons: titles(H2_BUTTONS),
-  });
-}
-
-// ── Booking form submission (name / business / phone / email) ────────────────
-async function handleBookingSubmission(lead, conv, resp) {
-  if (resp.full_name)     lead.name     = String(resp.full_name).slice(0, 120);
-  if (resp.business_name) lead.company  = String(resp.business_name).slice(0, 120);
-  if (resp.email)         lead.email    = String(resp.email).slice(0, 160);
-  if (resp.phone_number)  lead.altPhone = String(resp.phone_number).slice(0, 40);
-  lead.flowStep = 'booking_sent';
+// ── Route 1 · HIGH_PRIORITY ─────────────────────────────────────────────────
+async function routeHighPriority(lead, conv, cfg) {
   lead.status = 'Contacted';
-  lead.invalidCount = 0;
-  clearAwaiting(lead);
   await lead.save();
-  emitLeadUpdate(lead);
-  await Conversation.updateOne({ phone: lead.phone }, { $set: { name: lead.name || undefined, company: lead.company || undefined, label: 'hot' } });
-
-  const salesRepName = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'Our team');
-  await notifySalesRep(`${HOT_SALES_BRIEF(lead, 'Booked a call — details submitted')}\nPhone: ${lead.altPhone || '—'}`);
-  await sendText(lead.phone, BOOKING_CONFIRM(lead.name, salesRepName));
-  return logOutbound(conv, lead.phone, BOOKING_CONFIRM(lead.name, salesRepName));
+  await sendText(lead.phone, cfg.highPriority.intro);
+  await logOutbound(conv, lead.phone, cfg.highPriority.intro);
+  return askNextContactField(lead, conv, cfg);
 }
 
-async function handleH2(lead, conv, selectedId) {
-  if (selectedId === 'hot_book') {
-    // Open the booking form flow to collect details (no Calendly link)
+/** Asks ONLY for fields we don't already have. Never asks twice. */
+async function askNextContactField(lead, conv, cfg) {
+  const order = cfg.contact.order || ['full_name', 'company', 'email'];
+  const missing = order.filter((f) => !String(lead[CONTACT_FIELD[f]] || '').trim());
+
+  if (missing.length === 0) return onContactComplete(lead, conv, cfg);
+
+  // Nothing known at all → one native form is faster than three questions.
+  if (missing.length === order.length) {
     let sent = false;
-    try { sent = await sendBookingFlow(lead.phone, lead.name); }
-    catch (e) { logger.warn('Booking flow send failed', { error: e.message }); }
+    try { sent = await sendContactFlow(lead.phone, lead.name); }
+    catch (e) { logger.warn('Contact flow send failed', { error: e.message }); }
     if (sent) {
-      lead.flowStep = 'awaiting_booking';
-      setAwaiting(lead);
+      lead.flowStep = 'contact_flow_sent';
+      setAwaiting(lead, cfg);
       await lead.save();
-      return logOutbound(conv, lead.phone, BOOKING_FLOW_BODY(lead.name), {
-        kind: 'flow', headerKey: 'calendly_header', flowCta: 'Book a call',
+      return logOutbound(conv, lead.phone, cfg.contact.intro, {
+        kind: 'flow', headerKey: cfg.contact.headerKey, flowCta: 'Share your details',
       });
     }
-    // Fallback if the booking flow isn't configured — Calendly link
-    const salesRepName = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'our solutions team');
-    const calendlyLink = await getSetting('calendlyLink', 'https://calendly.com/cloudswift');
-    lead.calendlyLink = calendlyLink;
-    lead.flowStep = 'booking_sent';
-    lead.status = 'Contacted';
-    clearAwaiting(lead);
-    await lead.save();
-    emitLeadUpdate(lead);
-    const img = await assetUrl('calendly_header');
-    if (img) await sendImage(lead.phone, img, H3_BODY(salesRepName, calendlyLink));
-    else     await sendText(lead.phone, H3_BODY(salesRepName, calendlyLink));
-    await notifySalesRep(HOT_SALES_BRIEF(lead, 'Chose: Book a call (Calendly sent)'));
-    return logOutbound(conv, lead.phone, H3_BODY(salesRepName, calendlyLink), img ? { headerKey: 'calendly_header' } : {});
   }
-  if (selectedId === 'hot_callback') {
-    lead.flowStep = 'awaiting_callback_time';
-    setAwaiting(lead);
-    await lead.save();
-    await sendText(lead.phone, H4_BODY);
-    return logOutbound(conv, lead.phone, H4_BODY);
+
+  const field = missing[0];
+  lead.flowStep = CONTACT_STEP[field];
+  setAwaiting(lead, cfg);
+  await lead.save();
+  const prompt = cfg.contact.prompts[field];
+  await sendText(lead.phone, prompt);
+  return logOutbound(conv, lead.phone, prompt);
+}
+
+async function handleContactAnswer(lead, conv, cfg, field, text) {
+  const value = (text || '').trim();
+  if (!value) return handleInvalid(lead, conv, cfg);
+  if (field === 'email' && !looksLikeEmail(value)) {
+    const retry = 'That doesn’t look like a valid email — could you re-send it?';
+    await sendText(lead.phone, retry);
+    return logOutbound(conv, lead.phone, retry);
   }
-  if (selectedId === 'hot_chat') {
-    const salesRepName = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'our team');
+  lead[CONTACT_FIELD[field]] = value.slice(0, 160);
+  lead.invalidCount = 0;
+  await lead.save();
+  emitLeadUpdate(lead);
+  await Conversation.updateOne(
+    { phone: lead.phone },
+    { $set: { name: lead.name || undefined, company: lead.company || undefined } }
+  );
+  return askNextContactField(lead, conv, cfg);
+}
+
+async function handleContactSubmission(lead, conv, cfg, resp) {
+  if (resp.full_name && !lead.name) lead.name = String(resp.full_name).slice(0, 120);
+  if (resp.company && !lead.company) lead.company = String(resp.company).slice(0, 120);
+  if (resp.email && !lead.email) lead.email = String(resp.email).slice(0, 160);
+  lead.invalidCount = 0;
+  await lead.save();
+  emitLeadUpdate(lead);
+  await Conversation.updateOne(
+    { phone: lead.phone },
+    { $set: { name: lead.name || undefined, company: lead.company || undefined } }
+  );
+  return askNextContactField(lead, conv, cfg);
+}
+
+async function onContactComplete(lead, conv, cfg) {
+  await logEvent(lead, 'contact_captured', lead.flowStep);
+  await notifySalesRep(buildSalesBrief(lead, cfg));
+
+  // Human-requested leads just wait for a person; only commercially routed
+  // HIGH_PRIORITY leads get the booking options.
+  if (lead.route !== 'HIGH_PRIORITY') {
     lead.flowStep = 'human_handoff';
     clearAwaiting(lead);
     await lead.save();
-    emitLeadUpdate(lead);
-    await Conversation.updateOne({ phone: lead.phone }, { $set: { botPaused: true } });
-    await sendText(lead.phone, HOT_CHAT_HANDOFF(salesRepName));
-    await notifySalesRep(HOT_SALES_BRIEF(lead, '⚡ Wants to CHAT NOW — bot paused, please jump in'));
-    return logOutbound(conv, lead.phone, HOT_CHAT_HANDOFF(salesRepName));
+    const ack = 'Thanks — a CloudSwift specialist will pick this up shortly.';
+    await sendText(lead.phone, ack);
+    return logOutbound(conv, lead.phone, ack);
   }
-  return handleInvalid(lead, conv, 'h2');
+
+  lead.flowStep = 'high_priority_options';
+  setAwaiting(lead, cfg);
+  await lead.save();
+  const body = fill(cfg.highPriority.nextStepsTemplate, { name: lead.name || 'there' });
+  const img = await assetUrl(cfg.highPriority.headerKey);
+  await sendButtons(lead.phone, body, cfg.highPriority.buttons, img || '');
+  return logOutbound(conv, lead.phone, body, {
+    kind: 'buttons', headerKey: img ? cfg.highPriority.headerKey : undefined,
+    buttons: titles(cfg.highPriority.buttons),
+  });
 }
 
-async function handleCallbackTime(lead, conv, text) {
-  lead.callbackTime = (text || '').slice(0, 200);
+async function handleHighPriorityChoice(lead, conv, cfg, selectedId) {
+  if (selectedId === 'book_call') {
+    lead.flowStep = 'awaiting_booking_slot';
+    setAwaiting(lead, cfg);
+    await lead.save();
+    await sendText(lead.phone, cfg.booking.slotPrompt);
+    return logOutbound(conv, lead.phone, cfg.booking.slotPrompt);
+  }
+  if (selectedId === 'req_callback') {
+    lead.flowStep = 'awaiting_callback_time';
+    setAwaiting(lead, cfg);
+    await lead.save();
+    await sendText(lead.phone, cfg.booking.callbackPrompt);
+    return logOutbound(conv, lead.phone, cfg.booking.callbackPrompt);
+  }
+  if (selectedId === 'chat_now') {
+    const rep = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'our team');
+    lead.flowStep = 'human_handoff';
+    lead.humanHandoffAt = new Date();
+    clearAwaiting(lead);
+    await lead.save();
+    emitLeadUpdate(lead);
+    // Human takeover — automation stops for this conversation.
+    await Conversation.updateOne({ phone: lead.phone }, { $set: { botPaused: true } });
+    const body = fill(cfg.booking.chatHandoff, { rep });
+    await sendText(lead.phone, body);
+    await logOutbound(conv, lead.phone, body);
+    await notifySalesRep(`${buildSalesBrief(lead, cfg)}\n\n⚡ Wants to CHAT NOW — bot paused, please jump in.`);
+    return logEvent(lead, 'human_handoff', 'high_priority_options', { via: 'chat_now' });
+  }
+  return handleInvalid(lead, conv, cfg);
+}
+
+async function handleBookingSlot(lead, conv, cfg, text) {
+  const slot = (text || '').trim();
+  if (!slot) return handleInvalid(lead, conv, cfg);
+  const rep = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'Our team');
+
+  lead.bookingSlot = slot.slice(0, 200);
+  lead.meetingBookedAt = new Date();
+  lead.status = 'Contacted';
+  lead.flowStep = 'booking_requested';
+  clearAwaiting(lead);
+  await lead.save();
+  emitLeadUpdate(lead);
+
+  const body = fill(cfg.booking.confirmTemplate, { name: lead.name || 'there', rep, slot: lead.bookingSlot });
+  await sendText(lead.phone, body);
+  await logOutbound(conv, lead.phone, body);
+  await notifySalesRep(`${buildSalesBrief(lead, cfg)}\n\n📅 Requested slot: ${lead.bookingSlot}`);
+  return logEvent(lead, 'meeting_booked', 'awaiting_booking_slot', { slot: lead.bookingSlot });
+}
+
+async function handleCallbackTime(lead, conv, cfg, text) {
+  const when = (text || '').trim();
+  if (!when) return handleInvalid(lead, conv, cfg);
+  const rep = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'Our team');
+
+  lead.callbackTime = when.slice(0, 200);
+  lead.meetingBookedAt = lead.meetingBookedAt || new Date();
   lead.flowStep = 'callback_ack';
   clearAwaiting(lead);
   await lead.save();
   emitLeadUpdate(lead);
-  const salesRepName = await getSetting('salesRepName', process.env.SALES_REP_NAME || 'Our team');
-  await sendText(lead.phone, H11_BODY(salesRepName));
-  await notifySalesRep(HOT_SALES_BRIEF(lead, `Requested callback: ${lead.callbackTime}`));
-  return logOutbound(conv, lead.phone, H11_BODY(salesRepName));
+
+  const body = fill(cfg.booking.callbackAck, { rep });
+  await sendText(lead.phone, body);
+  await logOutbound(conv, lead.phone, body);
+  await notifySalesRep(`${buildSalesBrief(lead, cfg)}\n\n📞 Requested callback: ${lead.callbackTime}`);
+  return logEvent(lead, 'meeting_booked', 'awaiting_callback_time', { callbackTime: lead.callbackTime });
 }
 
-// ── WARM path ────────────────────────────────────────────────────────────────
-async function goWarm(lead, conv) {
+// ── Route 2 · NURTURE_REVIEW ────────────────────────────────────────────────
+async function routeNurture(lead, conv, cfg) {
   lead.status = 'Nurturing';
-  lead.flowStep = 'n1_sent';
-  setAwaiting(lead);
+  lead.flowStep = 'nurture_consent_sent';
+  setAwaiting(lead, cfg);
   await lead.save();
   emitLeadUpdate(lead);
-  await Conversation.updateOne({ phone: lead.phone }, { $set: { label: 'warm', leadId: lead._id } });
 
-  const img = await assetUrl('nurture_header');
-  const body = A_W_BODY(lead.topic);
-  if (img) await sendImage(lead.phone, img, body);
-  else     await sendText(lead.phone, body);
-  await logOutbound(conv, lead.phone, body, img ? { headerKey: 'nurture_header' } : {});
-  await sendN1(lead.phone);
-  return logOutbound(conv, lead.phone, N1_BODY, {
-    kind: 'buttons', headerKey: 'n1_header', buttons: titles(N1_BUTTONS),
+  const res = cfg.resources?.[lead.requirement] || cfg.resources?.other || {};
+  const checklist = res.checklist || '';
+  if (checklist) {
+    const img = await assetUrl(cfg.nurtureReview.headerKey);
+    if (img) await sendImage(lead.phone, img, checklist);
+    else await sendText(lead.phone, checklist);
+    await logOutbound(conv, lead.phone, checklist, img ? { headerKey: cfg.nurtureReview.headerKey } : {});
+  }
+
+  await sendButtons(lead.phone, cfg.nurtureReview.consentPrompt, cfg.nurtureReview.consentButtons);
+  return logOutbound(conv, lead.phone, cfg.nurtureReview.consentPrompt, {
+    kind: 'buttons', buttons: titles(cfg.nurtureReview.consentButtons),
   });
 }
 
-async function handleN1(lead, conv, selectedId) {
-  if (selectedId === 'warm_yes') {
+async function handleNurtureConsent(lead, conv, cfg, selectedId) {
+  if (selectedId === 'nurture_yes') {
     const now = Date.now();
-    lead.flowStep = 'nurture_d3';
+    const sched = cfg.nurtureReview.schedule || [{ day: 3 }, { day: 7 }, { day: 21 }];
+    lead.nurtureConsent = true;
     lead.status = 'Nurturing';
-    lead.nurtureD3At  = new Date(now + 3  * 864e5);
-    lead.nurtureD7At  = new Date(now + 7  * 864e5);
-    lead.nurtureD21At = new Date(now + 21 * 864e5);
+    lead.flowStep = 'nurture_d3';   // picked up by the scheduler
+    lead.nurtureD3At  = new Date(now + (sched[0]?.day ?? 3) * 864e5);
+    lead.nurtureD7At  = new Date(now + (sched[1]?.day ?? 7) * 864e5);
+    lead.nurtureD21At = new Date(now + (sched[2]?.day ?? 21) * 864e5);
     lead.nurtureD3Sent = lead.nurtureD7Sent = lead.nurtureD21Sent = false;
     clearAwaiting(lead);
     await lead.save();
     emitLeadUpdate(lead);
-    await sendText(lead.phone, WARM_CONFIRM(lead.name || 'there'));
-    return logOutbound(conv, lead.phone, WARM_CONFIRM(lead.name || 'there'));
+    const body = fill(cfg.nurtureReview.consentYes, { name: lead.name || 'there' });
+    await sendText(lead.phone, body);
+    await logOutbound(conv, lead.phone, body);
+    return logEvent(lead, 'nurture_consent', 'nurture_consent_sent', { granted: true });
   }
-  if (selectedId === 'warm_no') {
-    lead.flowStep = 'warm_declined';
+  if (selectedId === 'nurture_no') {
+    lead.nurtureConsent = false;
+    lead.flowStep = 'nurture_declined';
     clearAwaiting(lead);
     await lead.save();
     emitLeadUpdate(lead);
-    await sendText(lead.phone, X6_BODY);
-    return logOutbound(conv, lead.phone, X6_BODY);
+    await sendText(lead.phone, cfg.nurtureReview.consentNo);
+    await logOutbound(conv, lead.phone, cfg.nurtureReview.consentNo);
+    return logEvent(lead, 'nurture_consent', 'nurture_consent_sent', { granted: false });
   }
-  return handleInvalid(lead, conv, 'n1');
+  return handleInvalid(lead, conv, cfg);
 }
 
-// ── COLD path ────────────────────────────────────────────────────────────────
-async function goCold(lead, conv) {
+// ── Route 3 · LOW_INTENT_SELF_SERVE ─────────────────────────────────────────
+async function routeSelfServe(lead, conv, cfg) {
   lead.status = 'Lost';
-  lead.flowStep = 'cold_guide';
-  setAwaiting(lead);
+  lead.flowStep = 'self_serve_sent';
+  setAwaiting(lead, cfg);
   await lead.save();
   emitLeadUpdate(lead);
-  await Conversation.updateOne({ phone: lead.phone }, { $set: { label: 'cold', leadId: lead._id } });
-  const img = await assetUrl('thank_you_header');
-  const body = A_C_BODY(lead.topic);
-  await sendButtons(lead.phone, body, COLD_BUTTONS, img || '');
-  return logOutbound(conv, lead.phone, body, {
-    kind: 'buttons', headerKey: 'thank_you_header', buttons: titles(COLD_BUTTONS),
+
+  const res = cfg.resources?.[lead.requirement] || cfg.resources?.other || {};
+  const guide = res.guide || '';
+  const img = await assetUrl(cfg.selfServe.headerKey);
+  await sendButtons(lead.phone, guide || 'Here’s something that should help at this stage.', cfg.selfServe.buttons, img || '');
+  return logOutbound(conv, lead.phone, guide, {
+    kind: 'buttons', headerKey: img ? cfg.selfServe.headerKey : undefined,
+    buttons: titles(cfg.selfServe.buttons),
   });
 }
 
-async function handleCold(lead, conv, selectedId) {
-  if (selectedId === 'cold_finish') {
-    lead.flowStep = 'cold_exit';
-    lead.status = 'Lost';
-    clearAwaiting(lead);
-    await lead.save();
-    emitLeadUpdate(lead);
-    await sendText(lead.phone, COLD_FINISH_BODY);
-    return logOutbound(conv, lead.phone, COLD_FINISH_BODY);
-  }
-  // cold_menu handled globally
-  return handleInvalid(lead, conv, 'cold');
+async function handleSelfServeChoice(lead, conv, cfg, selectedId) {
+  if (selectedId === 'finish') return handleFinish(lead, conv, cfg);
+  if (selectedId === 'main_menu') return startFlow(lead, conv, cfg);
+  return handleInvalid(lead, conv, cfg);
 }
 
-// ── Safety net X1 · invalid input ────────────────────────────────────────────
-async function handleInvalid(lead, conv, at) {
+async function handleFinish(lead, conv, cfg) {
+  lead.flowStep = 'self_serve_done';
+  clearAwaiting(lead);
+  await lead.save();
+  emitLeadUpdate(lead);
+  await sendText(lead.phone, cfg.selfServe.finishBody);
+  return logOutbound(conv, lead.phone, cfg.selfServe.finishBody);
+}
+
+// ── Human request (escape route, always available) ──────────────────────────
+async function handleHumanRequest(lead, conv, cfg) {
+  lead.humanRequested = true;
+  lead.humanRequestedAt = new Date();
+  lead.talkToPerson = true;          // legacy flag, no longer used for routing
+  lead.invalidCount = 0;
+  await lead.save();
+  emitLeadUpdate(lead);
+  await logEvent(lead, 'human_requested', lead.flowStep);
+
+  await sendText(lead.phone, cfg.safety.humanRequestAck);
+  await logOutbound(conv, lead.phone, cfg.safety.humanRequestAck);
+
+  // Alert the team immediately — the human-intent signal matters even before
+  // we know whether the account is commercially qualified.
+  await notifySalesRep(
+    `🙋 HUMAN REQUESTED — ${lead.name || lead.profileName || lead.phone}\n` +
+    `${buildSalesBrief(lead, cfg)}\n\nNote: requested a specialist. Not auto-classified as high priority.`
+  );
+
+  // Collect only what we still don't know, then wait for a person.
+  return askNextContactField(lead, conv, cfg);
+}
+
+async function escalateFromNurture(lead, conv, cfg, text) {
+  lead.route = 'HIGH_PRIORITY';
+  lead.routeReason = 'Positive buying signal during nurture (manual review)';
+  lead.score = 'HOT';
+  lead.scoreTimestamp = new Date();
+  lead.routedAt = new Date();
+  lead.needsHumanReview = true;
+  lead.reviewReason = 'Escalated from nurture on positive reply';
+  await lead.save();
+  emitLeadUpdate(lead);
+  await Conversation.updateOne({ phone: lead.phone }, { $set: { label: 'hot' } });
+  await logEvent(lead, 'nurture_escalated', lead.flowStep, { text: (text || '').slice(0, 200) });
+  return routeHighPriority(lead, conv, cfg);
+}
+
+// ── Safety nets ─────────────────────────────────────────────────────────────
+async function handleInvalid(lead, conv, cfg) {
   lead.invalidCount = (lead.invalidCount || 0) + 1;
-  // After repeated failures, offer a person more directly (still via X1 buttons)
-  setAwaiting(lead);
+  setAwaiting(lead, cfg);
+
+  // Repeated failures → stop guessing and get a human involved.
+  if (lead.invalidCount >= 3) {
+    lead.needsHumanReview = true;
+    lead.reviewReason = `Could not interpret replies at ${lead.flowStep}`;
+    await lead.save();
+    await logEvent(lead, 'free_text_flagged', lead.flowStep, { reason: 'repeated_invalid' });
+    await notifySalesRep(
+      `⚠️ Needs human review — ${lead.name || lead.phone}\nStuck at: ${lead.flowStep}\n${buildSalesBrief(lead, cfg)}`
+    );
+    const ack = cfg.safety.freeTextLowConfidenceAck;
+    await sendText(lead.phone, ack);
+    return logOutbound(conv, lead.phone, ack);
+  }
+
   await lead.save();
+  await logEvent(lead, 'invalid_input', lead.flowStep);
   const img = await assetUrl('x1_header');
-  await sendButtons(lead.phone, X1_BODY, X1_BUTTONS, img || '');
-  return logOutbound(conv, lead.phone, X1_BODY, {
-    kind: 'buttons', headerKey: 'x1_header', buttons: titles(X1_BUTTONS),
+  await sendButtons(lead.phone, cfg.safety.invalidPrompt, cfg.safety.invalidButtons, img || '');
+  return logOutbound(conv, lead.phone, cfg.safety.invalidPrompt, {
+    kind: 'buttons', headerKey: img ? 'x1_header' : undefined, buttons: titles(cfg.safety.invalidButtons),
   });
 }
 
-// ── Resend current step (x_retry / x_resume) ─────────────────────────────────
-async function resendStep(lead, conv) {
-  setAwaiting(lead);
-  await lead.save();
-  switch (lead.flowStep) {
-    case 'entry':
-    case 'a0_sent':                return startFlow(lead, conv);
-    case 'a1_sent':                return void (await sendA1(lead.phone));
-    case 'qualify_sent':           return void (await sendQualifyFlow(lead.phone, lead.name));
-    case 'q1_sent':                return void (await sendButtons(lead.phone, Q1_BODY, Q1_BUTTONS));
-    case 'q2_sent':                return void (await sendButtons(lead.phone, Q2_BODY, Q2_BUTTONS));
-    case 'q3_sent':                return void (await sendButtons(lead.phone, Q3_BODY, Q3_BUTTONS));
-    case 'q4_sent':                return void (await sendButtons(lead.phone, Q4_BODY, Q4_BUTTONS));
-    case 'awaiting_name_company':  { const ok = await sendContactFlow(lead.phone, lead.name); if (!ok) await sendText(lead.phone, H1_BODY); return; }
-    case 'h2_sent':                return void (await sendH2(lead.phone, lead.name));
-    case 'awaiting_booking':       return void (await sendBookingFlow(lead.phone, lead.name));
-    case 'awaiting_callback_time': return void (await sendText(lead.phone, H4_BODY));
-    case 'n1_sent':                return void (await sendN1(lead.phone));
-    case 'cold_guide':             return goCold(lead, conv);
-    default:                       return startFlow(lead, conv);
+/** Store a free-text reply verbatim; flag for review when confidence is low. */
+async function recordFreeText(lead, text, atStep, classification) {
+  try {
+    const entry = {
+      text: String(text || '').slice(0, 1000),
+      atStep: atStep || '',
+      classifiedAs: classification?.matched ? `${classification.field}:${classification.value}` : '',
+      confidence: classification?.confidence || 0,
+      at: new Date(),
+    };
+    lead.freeTextLog = [...(lead.freeTextLog || []), entry].slice(-30);
+    if (classification && !classification.accepted) {
+      lead.needsHumanReview = true;
+      lead.reviewReason = `Low-confidence free text at ${atStep}`;
+      await logEvent(lead, 'free_text_flagged', atStep, {
+        text: entry.text, confidence: entry.confidence,
+      });
+    }
+    await lead.save();
+  } catch (err) {
+    logger.warn('recordFreeText failed', { error: err.message });
   }
 }
 
-// ── General/terminal-state message ───────────────────────────────────────────
-async function handleGeneral(lead, conv, preview) {
-  await notifySalesRep(`💬 Message from ${lead.name || lead.phone} (${lead.score}) — "${preview}"\n→ wa.me/${lead.phone}`);
-  const img = await assetUrl('general_header');
-  await sendButtons(lead.phone, GENERAL_BODY, GENERAL_BUTTONS, img || '');
-  return logOutbound(conv, lead.phone, GENERAL_BODY, {
-    kind: 'buttons', headerKey: 'general_header', buttons: titles(GENERAL_BUTTONS),
-  });
+/** Resume from the last incomplete step — never restart from the beginning. */
+async function resendStep(lead, conv, cfg) {
+  lead.invalidCount = 0;
+  setAwaiting(lead, cfg);
+  await lead.save();
+
+  switch (lead.flowStep) {
+    case 'requirement_sent':       return startFlow(lead, conv, cfg);
+    case 'a1_sent_v2': {
+      const body = fill(cfg.a1.bodyTemplate, { requirement_label: requirementLabel(cfg, lead.requirement) });
+      await sendButtons(lead.phone, body, cfg.a1.buttons);
+      return logOutbound(conv, lead.phone, body, { kind: 'buttons', buttons: titles(cfg.a1.buttons) });
+    }
+    case 'qualify_q1':             return sendQuestion(lead, conv, cfg, 'Q1');
+    case 'qualify_q2':             return sendQuestion(lead, conv, cfg, 'Q2');
+    case 'qualify_q3':             return sendQuestion(lead, conv, cfg, 'Q3');
+    case 'qualify_q4':
+    case 'qualify_q4_text':        return sendQuestion(lead, conv, cfg, 'Q4');
+    case 'awaiting_full_name':
+    case 'awaiting_company':
+    case 'awaiting_email':
+    case 'contact_flow_sent':      return askNextContactField(lead, conv, cfg);
+    case 'high_priority_options':  return onContactComplete(lead, conv, cfg);
+    case 'awaiting_booking_slot':  { await sendText(lead.phone, cfg.booking.slotPrompt); return logOutbound(conv, lead.phone, cfg.booking.slotPrompt); }
+    case 'awaiting_callback_time': { await sendText(lead.phone, cfg.booking.callbackPrompt); return logOutbound(conv, lead.phone, cfg.booking.callbackPrompt); }
+    case 'nurture_consent_sent':   return routeNurture(lead, conv, cfg);
+    case 'self_serve_sent':        return routeSelfServe(lead, conv, cfg);
+    default:                       return startFlow(lead, conv, cfg);
+  }
 }
 
-// ── X3 · opt-out ─────────────────────────────────────────────────────────────
-async function optOut(phone, conv) {
+async function optOut(phone, conv, cfg) {
   await Conversation.updateOne({ phone }, { $set: { optedOut: true } });
   const lead = await Lead.findOne({ phone });
   if (lead) {
     lead.optedOut = true;
-    lead.nurtureD3Sent = lead.nurtureD7Sent = lead.nurtureD21Sent = true; // cancel pending nurture
+    lead.nurtureConsent = false;
+    lead.nurtureD3Sent = lead.nurtureD7Sent = lead.nurtureD21Sent = true; // cancel pending
     clearAwaiting(lead);
     lead.flowStep = 'opted_out';
     await lead.save();
     emitLeadUpdate(lead);
+    await logEvent(lead, 'opted_out', 'opted_out');
   }
-  await sendText(phone, X3_STOP_BODY);
-  if (conv?._id) await logMessage(phone, conv._id, 'outbound', 'text', X3_STOP_BODY, '', null);
+  await sendText(phone, cfg.safety.optOutBody);
+  if (conv?._id) await logMessage(phone, conv._id, 'outbound', 'text', cfg.safety.optOutBody, '', null, {});
   logger.info('Contact opted out', { phone });
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
+async function handleGeneral(lead, conv, cfg, preview) {
+  if (preview) await recordFreeText(lead, preview, lead.flowStep || 'general', null);
+  await notifySalesRep(
+    `💬 Message from ${lead.name || lead.phone} (${routeLabelText(lead.route)}) — "${preview}"\n→ wa.me/${lead.phone}`
+  );
+  const body = 'Thanks — our team will follow up with you shortly.';
+  await sendButtons(lead.phone, body, [{ id: 'main_menu', title: 'Main menu' }]);
+  return logOutbound(conv, lead.phone, body, { kind: 'buttons', buttons: ['Main menu'] });
+}
+
+// ── Sales brief (every stored signal, per the V2 spec) ──────────────────────
+export function buildSalesBrief(lead, cfg) {
+  const req = cfg ? requirementLabel(cfg, lead.requirement) : lead.requirementLabel;
+  const label = (id, options) => findOption(options, id)?.label || id || '—';
+  const q = cfg?.qualification || {};
+  return [
+    `${routeLabelText(lead.route)} — ${lead.name || lead.profileName || 'Unknown'}, ${lead.company || 'Unknown company'}`,
+    lead.email ? `Email: ${lead.email}` : null,
+    `WhatsApp: ${lead.phone}`,
+    `Source: ${lead.source || lead.channel || 'unknown'}${lead.campaign ? ` (${lead.campaign})` : ''}`,
+    `Requirement: ${req || '—'}`,
+    `Trigger: ${label(lead.trigger, q.Q1?.options)}`,
+    `Timeline: ${label(lead.timeline, q.Q2?.options)}`,
+    `Role: ${label(lead.role, q.Q3?.options)}`,
+    `Context: ${lead.contextAnswerLabel || lead.contextAnswer || '—'}`,
+    `Fit: ${lead.fit || '—'} · Intent: ${lead.intent || '—'} · Urgency: ${lead.urgency || '—'}`,
+    `Route: ${routeLabelText(lead.route)}${lead.routeReason ? ` — ${lead.routeReason}` : ''}`,
+    lead.humanRequested ? 'Requested a specialist: yes' : null,
+    lead.bookingSlot ? `Requested slot: ${lead.bookingSlot}` : null,
+    lead.callbackTime ? `Callback: ${lead.callbackTime}` : null,
+    lead.needsHumanReview ? `⚠️ Needs review: ${lead.reviewReason || 'flagged'}` : null,
+    `First message: "${lead.firstMessage || '—'}"`,
+    `→ wa.me/${lead.phone}`,
+  ].filter(Boolean).join('\n');
+}
+
+// ── Utilities ───────────────────────────────────────────────────────────────
 function hasReferral(r) { return Boolean(r && (r.sourceId || r.sourceUrl || r.headline)); }
 
-function parseNameCompany(text = '') {
-  const t = (text || '').trim();
-  if (!t) return { name: '', company: '' };
-  let sep = null;
-  if (t.includes(',')) sep = ',';
-  else if (/\s+at\s+/i.test(t)) sep = ' at ';
-  else if (t.includes(' - ')) sep = ' - ';
-  else if (t.includes('|')) sep = '|';
-  if (sep) {
-    const parts = sep === ' at ' ? t.split(/\s+at\s+/i) : t.split(sep);
-    return { name: (parts[0] || '').trim(), company: (parts.slice(1).join(sep) || '').trim() };
-  }
-  return { name: t, company: '' };
-}
-
-async function logOutbound(conv, phone, body, meta = {}) {
-  try {
-    // Derive the WA message type from the rich-meta kind so the CRM can render it
-    let type = 'text';
-    if (meta.kind === 'flow') type = 'flow';
-    else if (meta.kind === 'buttons') type = 'button';
-    else if (meta.headerKey && !meta.buttons && !meta.flowCta) type = 'image';
-    if (conv?._id) await logMessage(phone, conv._id, 'outbound', type, body, '', null, meta);
-    await Conversation.updateOne({ phone }, { $set: { lastMessage: (body || '').slice(0, 120), lastMessageAt: new Date() } });
-  } catch {}
-}
-
-// ── Status update handler (delivery receipts) ────────────────────────────────
+// ── Delivery receipts ───────────────────────────────────────────────────────
 export async function handleStatus(status) {
   try {
     const { id, status: s } = status;

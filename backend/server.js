@@ -15,6 +15,8 @@ import blogRouter from './routes/blog.js';
 import leadsRouter from './routes/leads.js';
 import crmRouter from './routes/crm.js';
 import adminRouter from './routes/admin.js';
+import analyticsRouter from './routes/analytics.js';
+import flowConfigRouter from './routes/flowConfig.js';
 import assetsRouter from './routes/assets.js';
 import settingsRouter from './routes/settings.js';
 import logger from './services/logger.js';
@@ -107,6 +109,8 @@ app.use('/api/blog', blogRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/crm', crmRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/flow-config', flowConfigRouter);
 app.use('/api/assets', assetsRouter);
 app.use('/api/settings', settingsRouter);
 

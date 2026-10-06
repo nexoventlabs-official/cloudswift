@@ -1,0 +1,170 @@
+{
+  "file": "03-flow-qualification-v2",
+  "flowName": "B2B Qualification",
+  "version": "2.0",
+  "type": "Native WhatsApp Flow (multi-screen / dynamic)",
+  "purpose": "Collect the minimum information needed to assess fit, intent and urgency.",
+  "intro": "Thanks — a few quick details will help us route this correctly.",
+  "questions": [
+    {
+      "id": "Q1",
+      "field": "trigger",
+      "prompt": "What prompted you to reach out?",
+      "options": [
+        {
+          "id": "active_issue",
+          "label": "Active issue / support problem"
+        },
+        {
+          "id": "migration_project",
+          "label": "Migration / transformation project"
+        },
+        {
+          "id": "cost",
+          "label": "Cost optimisation"
+        },
+        {
+          "id": "security_compliance",
+          "label": "Security / compliance requirement"
+        },
+        {
+          "id": "new_initiative",
+          "label": "New initiative / expansion"
+        },
+        {
+          "id": "exploring",
+          "label": "Exploring options"
+        }
+      ]
+    },
+    {
+      "id": "Q2",
+      "field": "timeline",
+      "prompt": "When do you need this?",
+      "options": [
+        {
+          "id": "asap_30",
+          "label": "ASAP / within 30 days"
+        },
+        {
+          "id": "this_quarter",
+          "label": "This quarter"
+        },
+        {
+          "id": "next_quarter",
+          "label": "Next quarter"
+        },
+        {
+          "id": "six_plus",
+          "label": "6+ months"
+        },
+        {
+          "id": "exploring",
+          "label": "Just exploring"
+        }
+      ]
+    },
+    {
+      "id": "Q3",
+      "field": "role",
+      "prompt": "What's your role in this?",
+      "options": [
+        {
+          "id": "owner_approver",
+          "label": "I own / approve the decision"
+        },
+        {
+          "id": "technical_lead",
+          "label": "I lead the technical evaluation"
+        },
+        {
+          "id": "evaluation_team",
+          "label": "I'm part of the evaluation team"
+        },
+        {
+          "id": "research",
+          "label": "I'm gathering information"
+        }
+      ]
+    },
+    {
+      "id": "Q4",
+      "field": "context",
+      "prompt": "Dynamic — based on selected requirement",
+      "branches": {
+        "migration": {
+          "prompt": "What's your current environment?",
+          "options": [
+            "On-premises",
+            "Azure",
+            "AWS / GCP",
+            "Hybrid / multi-cloud",
+            "Not sure"
+          ]
+        },
+        "managed_cloud": {
+          "prompt": "What's your current cloud environment?",
+          "options": [
+            "Azure",
+            "AWS / GCP",
+            "Hybrid / multi-cloud",
+            "On-prem + cloud",
+            "Not sure"
+          ]
+        },
+        "finops": {
+          "prompt": "Where is most of the cloud spend you're looking to optimise?",
+          "options": [
+            "Azure",
+            "AWS",
+            "GCP",
+            "Multi-cloud",
+            "Not sure"
+          ]
+        },
+        "security": {
+          "prompt": "What best describes the requirement?",
+          "options": [
+            "Security posture improvement",
+            "Compliance / audit",
+            "Identity / access",
+            "Cloud governance",
+            "Not sure"
+          ]
+        },
+        "m365": {
+          "prompt": "What do you need help with?",
+          "options": [
+            "Migration",
+            "Licensing / optimisation",
+            "Security",
+            "Dynamics 365",
+            "Ongoing support"
+          ]
+        },
+        "ai": {
+          "prompt": "Where are you with the AI initiative?",
+          "options": [
+            "Defined use case",
+            "Pilot / PoC",
+            "Production deployment",
+            "Need help identifying use case",
+            "Exploring"
+          ]
+        },
+        "other": {
+          "prompt": "Briefly tell us what you need.",
+          "type": "short-text"
+        }
+      },
+      "validationNote": "These contextual questions are V2 routing questions, not locked commercial scoring thresholds. CloudSwift sales should later confirm which service-specific variable best predicts opportunity value."
+    }
+  ],
+  "removedRule": "500+ employees no longer auto-closes the flow or automatically marks a lead HOT.",
+  "assessment": {
+    "fit": "Derived from requirement relevance and contextual environment; company/account enrichment may supplement this.",
+    "intent": "Derived primarily from trigger and role.",
+    "urgency": "Derived primarily from timeline.",
+    "weights": "Not hard-coded pending sales validation."
+  }
+}

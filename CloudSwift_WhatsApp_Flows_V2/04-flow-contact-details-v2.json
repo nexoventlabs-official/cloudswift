@@ -1,0 +1,40 @@
+{
+  "file": "04-flow-contact-details-v2",
+  "flowName": "Contact Details",
+  "version": "2.0",
+  "purpose": "Capture only unknown identity details before human/sales follow-up.",
+  "body": "Thanks — share your business details and we'll connect you with the right CloudSwift specialist.",
+  "fields": [
+    {
+      "field": "full_name",
+      "label": "Full name",
+      "type": "text",
+      "required": true,
+      "prefill_if_known": true
+    },
+    {
+      "field": "company",
+      "label": "Company",
+      "type": "text",
+      "required": true,
+      "prefill_if_known": true
+    },
+    {
+      "field": "email",
+      "label": "Work email",
+      "type": "email",
+      "required": true,
+      "prefill_if_known": true
+    }
+  ],
+  "rules": [
+    "Do not request a field that is already reliably stored.",
+    "WhatsApp number comes from the conversation and is not re-requested.",
+    "Submission creates/updates the lead and generates the sales brief."
+  ],
+  "next": [
+    "Book a call",
+    "Request callback",
+    "Chat now"
+  ]
+}

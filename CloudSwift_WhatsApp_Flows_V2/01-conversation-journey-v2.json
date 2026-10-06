@@ -1,0 +1,124 @@
+{
+  "file": "01-conversation-journey-v2",
+  "project": "CloudSwift WhatsApp Lead Automation",
+  "document": "Conversation Journey, Qualification & Outcomes",
+  "version": "2.0",
+  "status": "Proposed production flow — commercial thresholds remain configurable pending CloudSwift sales validation",
+  "principles": [
+    "Discover the prospect's requirement before qualification.",
+    "Ask only questions that change routing, sales context, or personalisation.",
+    "Separate fit, intent, and urgency rather than using company size as a hard HOT override.",
+    "Allow a prospect to request a human at any point without treating that action alone as proof of commercial qualification.",
+    "Reuse known data and never ask for the same contact information twice."
+  ],
+  "journey": [
+    {
+      "id": "A0",
+      "name": "Entry / Welcome",
+      "trigger": "First inbound message or menu restart",
+      "action": "Send welcome message and open Service / Need Picker (file 02).",
+      "message": "Hi 👋 Welcome to CloudSwift. Tell us what you're looking to solve and we'll point you to the right cloud specialist.",
+      "cta": "Choose what you need",
+      "next": "A1"
+    },
+    {
+      "id": "A1",
+      "name": "Requirement selected",
+      "action": "Store selected requirement and acknowledge it.",
+      "message_template": "{{requirement_label}} — understood. I need a few quick details to route this correctly.",
+      "buttons": [
+        {
+          "id": "continue",
+          "label": "Continue",
+          "next": "QUALIFY"
+        },
+        {
+          "id": "talk_specialist",
+          "label": "Talk to specialist",
+          "next": "HUMAN_REQUEST"
+        }
+      ]
+    },
+    {
+      "id": "HUMAN_REQUEST",
+      "name": "Requested human",
+      "meaning": "Strong human-intent signal, not an automatic proof of commercial qualification.",
+      "action": "Capture minimum contact details if unknown, create sales-review alert, pause automation when a human accepts the conversation.",
+      "next": "CONTACT"
+    },
+    {
+      "id": "QUALIFY",
+      "name": "Core qualification",
+      "source": "File 03",
+      "questions": [
+        "Q1 trigger / reason for enquiry",
+        "Q2 urgency / timeline",
+        "Q3 role in evaluation or decision",
+        "Q4 contextual question based on selected requirement"
+      ],
+      "next": "ASSESS"
+    },
+    {
+      "id": "ASSESS",
+      "name": "Qualification engine",
+      "dimensions": {
+        "fit": "How closely the account/environment matches CloudSwift's commercial and technical scope.",
+        "intent": "Evidence of an active project, problem, requirement, dissatisfaction, or initiative.",
+        "urgency": "How soon the prospect expects action or a decision."
+      },
+      "note": "No arbitrary numerical weights are locked in V2. Thresholds must remain configurable until CloudSwift sales data/service priorities validate them.",
+      "next": "ROUTE"
+    }
+  ],
+  "routing": {
+    "HIGH_PRIORITY": {
+      "criteria": "Strong commercial fit plus meaningful intent and/or urgency, or manual sales-review promotion.",
+      "sequence": [
+        "Open Contact Details if required.",
+        "Create complete sales brief.",
+        "Notify sales.",
+        "Offer Book a call / Request callback / Chat now."
+      ]
+    },
+    "NURTURE_REVIEW": {
+      "criteria": "Relevant account but timing, intent, or commercial context does not justify immediate sales escalation.",
+      "sequence": [
+        "Send requirement-specific useful resource.",
+        "Ask permission for follow-up.",
+        "If permission granted, run Day 3 / Day 7 / Day 21 nurture.",
+        "Escalate when a meaningful buying-intent signal appears."
+      ]
+    },
+    "LOW_INTENT_SELF_SERVE": {
+      "criteria": "No current opportunity detected or insufficient intent for sales action.",
+      "sequence": [
+        "Send relevant self-serve guide/resource.",
+        "Offer Main menu / Finish.",
+        "Allow the contact to return at any time."
+      ]
+    }
+  },
+  "salesBrief": [
+    "Contact name",
+    "Company",
+    "Work email",
+    "WhatsApp number",
+    "Selected requirement",
+    "Trigger / reason for enquiry",
+    "Timeline",
+    "Role",
+    "Contextual answer",
+    "Fit assessment",
+    "Intent assessment",
+    "Urgency assessment",
+    "Recommended next action"
+  ],
+  "safetyNets": {
+    "invalid_input": "Re-prompt with Try again / Talk to specialist / Main menu.",
+    "free_text": "Store the message; classify where possible; otherwise flag for human review.",
+    "drop_off": "Resume from the last incomplete step rather than restarting.",
+    "opt_out": "stop / unsubscribe / cancel disables automated nurture.",
+    "human_takeover": "Admin can pause automation at any point.",
+    "returning_contact": "Reuse stored information and do not request known contact fields again."
+  }
+}
