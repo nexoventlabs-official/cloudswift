@@ -128,6 +128,37 @@ export async function sendServiceFlow(phone, name = '') {
 }
 
 /**
+ * V2 — send the Requirement Picker as a native WhatsApp Flow.
+ *
+ * Options come from config/v2Flow.js, which is also what the published Flow
+ * JSON was generated from (scripts/publishV2Flows.mjs), so the two can't drift
+ * without the config changing first.
+ *
+ * Returns true if the Flow was sent; false lets the caller fall back to the
+ * list-message version (which stays fully functional).
+ */
+export async function sendRequirementFlow(phone, name = '', cfg = null) {
+  const flowId = process.env.WA_REQUIREMENT_FLOW_ID;
+  if (!flowId) return false;
+
+  const headerUrl = await assetUrl(cfg?.welcome?.headerKey || 'welcome_header');
+  const body = cfg?.welcome?.body
+    || "Hi 👋 Welcome to CloudSwift.\n\nTell us what you're looking to solve and we'll point you to the right cloud specialist.";
+
+  await sendFlow(phone, {
+    flowId,
+    flowToken: `cloudswift_req_${phone}`,
+    cta: (cfg?.welcome?.listButton || 'Choose what you need').slice(0, 20),
+    screen: 'CHOOSE_REQUIREMENT',
+    data: {},
+    headerImageUrl: headerUrl || '',
+    body: name ? body.replace('Hi 👋', `Hi ${name} 👋`) : body,
+    footer: 'CloudSwift',
+  });
+  return true;
+}
+
+/**
  * Send the multi-screen qualification flow (size → situation → timeline → role).
  * Self-contained (client-side navigate) — no data needed up front.
  * Returns true if sent, false if the flow id isn't configured.

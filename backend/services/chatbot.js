@@ -40,7 +40,7 @@ import { logEvent } from './funnel.js';
 import { emitLead, emitLeadUpdate, emitMessage } from './eventBus.js';
 import logger from './logger.js';
 import { sendText, sendButtons, sendList, sendImage, markRead } from './metaCloud.js';
-import { sendContactFlow } from './flowService.js';
+import { sendContactFlow, sendRequirementFlow } from './flowService.js';
 
 // ── Question plumbing ────────────────────────────────────────────────────────
 const Q_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -195,6 +195,10 @@ export async function handleMessage(msg) {
 
   // ── Native Flow submissions (contact details only in V2) ───────────────
   if (type === 'flow' && flowResponse) {
+    // V2 Requirement Picker Flow
+    if (flowResponse.requirement) {
+      return handleRequirementReply(lead, conv, cfg, String(flowResponse.requirement), null);
+    }
     if (flowResponse.full_name || flowResponse.company || flowResponse.email) {
       return handleContactSubmission(lead, conv, cfg, flowResponse);
     }
@@ -237,6 +241,19 @@ async function startFlow(lead, conv, cfg) {
   lead.invalidCount = 0;
   setAwaiting(lead, cfg);
   await lead.save();
+
+  // Prefer the published native Requirement Picker Flow; fall back to the
+  // list message if it isn't configured or the send fails.
+  let sentFlow = false;
+  try { sentFlow = await sendRequirementFlow(lead.phone, lead.name || lead.profileName, cfg); }
+  catch (e) { logger.warn('Requirement flow send failed, using list', { error: e.message }); }
+
+  if (sentFlow) {
+    return logOutbound(conv, lead.phone, cfg.welcome.body, {
+      kind: 'flow', headerKey: cfg.welcome.headerKey, flowCta: cfg.welcome.listButton,
+    });
+  }
+
   await sendQuestionList(conv, lead, {
     prompt: cfg.welcome.body,
     listButton: cfg.welcome.listButton,
