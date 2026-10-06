@@ -35,7 +35,7 @@ import {
   getConfig, findRequirement, requirementLabel, q4Branch, findOption, toRows, fill,
 } from '../config/v2Flow.js';
 import { assessLead, routeToScore, routeToLabel, routeLabelText } from './assessment.js';
-import { classifyFreeText, isOptOut, isPositiveSignal, isRestart } from './freeText.js';
+import { classifyFreeText, isOptOut, isPositiveSignal, isRestart, isMenuCommand } from './freeText.js';
 import { logEvent } from './funnel.js';
 import { emitLead, emitLeadUpdate, emitMessage } from './eventBus.js';
 import logger from './logger.js';
@@ -189,6 +189,9 @@ export async function handleMessage(msg) {
 
   // ── Global commands (available at any step) ────────────────────────────
   if (selectedId === 'main_menu') return startFlow(lead, conv, cfg);
+  // Typed "menu" / "restart" — works at any step, so a contact who gets stuck
+  // mid-journey can always get back to the start.
+  if (type === 'text' && isMenuCommand(text)) return startFlow(lead, conv, cfg);
   if (selectedId === 'talk_specialist') return handleHumanRequest(lead, conv, cfg);
   if (selectedId === 'retry' || selectedId === 'resume') return resendStep(lead, conv, cfg);
   if (selectedId === 'finish') return handleFinish(lead, conv, cfg);
@@ -521,7 +524,7 @@ async function askNextContactField(lead, conv, cfg) {
   // Nothing known at all → one native form is faster than three questions.
   if (missing.length === order.length) {
     let sent = false;
-    try { sent = await sendContactFlow(lead.phone, lead.name); }
+    try { sent = await sendContactFlow(lead.phone, lead.name, cfg); }
     catch (e) { logger.warn('Contact flow send failed', { error: e.message }); }
     if (sent) {
       lead.flowStep = 'contact_flow_sent';

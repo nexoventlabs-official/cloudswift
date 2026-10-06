@@ -30,6 +30,20 @@ export const SIGNALS = ['low', 'medium', 'high'];
 export const V2_CONFIG = {
   version: '2.0',
 
+  /**
+   * Published Meta Flow ids used by the V2 journey.
+   *
+   * Defaults are the real published ids so the journey works on any host
+   * without per-environment setup. Precedence: env var → this config →
+   * `v2FlowConfig` Setting override. Set an id to '' to force the
+   * list-message fallback.
+   */
+  flows: {
+    requirementFlowId: process.env.WA_REQUIREMENT_FLOW_ID || '4577730929132224',
+    qualifyFlowId:     process.env.WA_QUALIFY_FLOW_V2_ID  || '4992071007786916',
+    contactFlowId:     process.env.WA_CONTACT_FLOW_ID     || '1182014624148414',
+  },
+
   // ── A0 · Entry / requirement picker ───────────────────────────────────────
   welcome: {
     body:

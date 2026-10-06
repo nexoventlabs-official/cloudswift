@@ -138,7 +138,9 @@ export async function sendServiceFlow(phone, name = '') {
  * list-message version (which stays fully functional).
  */
 export async function sendRequirementFlow(phone, name = '', cfg = null) {
-  const flowId = process.env.WA_REQUIREMENT_FLOW_ID;
+  // env var → config default → off. Keeps the Flow working without
+  // per-environment env setup, while still allowing an override.
+  const flowId = process.env.WA_REQUIREMENT_FLOW_ID || cfg?.flows?.requirementFlowId;
   if (!flowId) return false;
 
   const headerUrl = await assetUrl(cfg?.welcome?.headerKey || 'welcome_header');
@@ -168,7 +170,7 @@ export async function sendRequirementFlow(phone, name = '', cfg = null) {
  * Returns true if sent; false lets the caller fall back to list messages.
  */
 export async function sendQualifyFlowV2(phone, cfg, requirement, name = '') {
-  const flowId = process.env.WA_QUALIFY_FLOW_V2_ID;
+  const flowId = process.env.WA_QUALIFY_FLOW_V2_ID || cfg?.flows?.qualifyFlowId;
   if (!flowId) return false;
 
   const branches = cfg?.qualification?.Q4?.branches || {};
@@ -230,8 +232,8 @@ export async function sendQualifyFlow(phone, name = '') {
  * Uses the hot_lead_header asset as the message header if available.
  * Returns true if sent, false if the flow id isn't configured.
  */
-export async function sendContactFlow(phone, name = '') {
-  const flowId = process.env.WA_CONTACT_FLOW_ID;
+export async function sendContactFlow(phone, name = '', cfg = null) {
+  const flowId = process.env.WA_CONTACT_FLOW_ID || cfg?.flows?.contactFlowId;
   if (!flowId) {
     logger.warn('WA_CONTACT_FLOW_ID not set — falling back to text prompt');
     return false;

@@ -169,3 +169,13 @@ export function isPositiveSignal(text, cfg) {
 export function isRestart(text) {
   return /^(hi|hello|hey|start|menu|restart|hi there)\b/i.test(String(text || '').trim());
 }
+
+/**
+ * Explicit "take me back to the menu" command, usable at ANY step.
+ *
+ * Deliberately a strict exact match (not the looser isRestart above) so a
+ * greeting typed as an answer to a question isn't mistaken for a restart.
+ */
+export function isMenuCommand(text) {
+  return /^(menu|main menu|restart|start over|reset)$/i.test(String(text || '').trim());
+}
