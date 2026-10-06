@@ -46,6 +46,9 @@ export async function urlToBase64(url, opts = {}) {
   }
 }
 
+/** Approx KB of a base64 string — used to stay under Meta's payload cap. */
+const kb = (b64) => Math.round((b64.length * 0.75) / 1024);
+
 /**
  * V2 — send the Requirement Picker as a native WhatsApp Flow.
  *
@@ -66,12 +69,44 @@ export async function sendRequirementFlow(phone, name = '', cfg = null) {
   const body = cfg?.welcome?.body
     || "Hi 👋 Welcome to CloudSwift.\n\nTell us what you're looking to solve and we'll point you to the right cloud specialist.";
 
-  // In-flow 8:1 banner. Flows block remote URLs, so it must be raw base64 —
-  // downscaled via Cloudinary first to stay well under the payload cap.
+  // Images shown INSIDE a Flow must be raw base64 (remote URLs are blocked),
+  // so each asset is downscaled via Cloudinary then encoded.
+  // 8:1 brand banner.
   const bannerUrl = await assetUrl('welcome_banner');
   const bannerB64 = bannerUrl
     ? await urlToBase64(bannerUrl, { width: 1920, height: 240, crop: 'fill', quality: 88, format: 'jpg' })
     : '';
+
+  // Per-option 1:1 icons, keyed `icon_<requirementId>` (uploaded in the admin
+  // panel under "Requirement Icons"). PNG keeps logo transparency crisp.
+  const requirements = [];
+  for (const r of cfg?.requirements || []) {
+    const item = {
+      id: r.id,
+      title: String(r.label || r.title).slice(0, 30),
+      description: String(r.description || '').slice(0, 300),
+    };
+    const iconUrl = await assetUrl(`icon_${r.id}`);
+    if (iconUrl) {
+      const icon = await urlToBase64(iconUrl, { width: 180, height: 180, crop: 'fill', quality: 90, format: 'png' });
+      if (icon) item.image = icon;
+    }
+    requirements.push(item);
+  }
+
+  // Meta caps flow_action_payload at ~240 KB. If banner + icons exceed the
+  // budget, drop the icons rather than letting the whole send fail.
+  let totalKb = kb(bannerB64) + requirements.reduce((a, r) => a + (r.image ? kb(r.image) : 0), 0);
+  if (totalKb > 220) {
+    requirements.forEach((r) => delete r.image);
+    logger.warn('Requirement flow payload over budget — dropped option icons', { totalKb });
+    totalKb = kb(bannerB64);
+  }
+  logger.info('Requirement flow assets', {
+    bannerKb: kb(bannerB64),
+    iconCount: requirements.filter((r) => r.image).length,
+    totalKb,
+  });
 
   await sendFlow(phone, {
     flowId,
@@ -79,8 +114,11 @@ export async function sendRequirementFlow(phone, name = '', cfg = null) {
     cta: (cfg?.welcome?.listButton || 'Choose what you need').slice(0, 20),
     screen: 'CHOOSE_REQUIREMENT',
     data: {
-      has_banner: Boolean(bannerB64),
       banner: bannerB64 || '',
+      has_banner: Boolean(bannerB64),
+      heading: cfg?.welcome?.heading || 'How can we help?',
+      subheading: cfg?.welcome?.subheading || 'What are you looking to solve?',
+      requirements,
     },
     headerImageUrl: headerUrl || '',
     body: name ? body.replace('Hi 👋', `Hi ${name} 👋`) : body,

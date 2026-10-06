@@ -34,6 +34,17 @@ const GROUP_LABELS = {
   welcome_branding: 'Welcome Branding',
 };
 
+/**
+ * V2 requirement icons are keyed `icon_<requirementId>`. Where a V1 icon
+ * already covers the same service, alias it to the V2 key (reusing the same
+ * Cloudinary file) so those options render immediately with no re-upload.
+ * Only applied when the V2 key doesn't already exist.
+ */
+const V2_ICON_ALIASES = {
+  icon_migration: 'icon_azure',
+  icon_managed_cloud: 'icon_managed',
+};
+
 const humanize = (s) =>
   String(s).replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -110,8 +121,32 @@ const run = async () => {
     }
   }
 
+  // Alias V1 icons onto their V2 requirement keys.
+  let aliased = 0;
+  for (const [v2Key, v1Key] of Object.entries(V2_ICON_ALIASES)) {
+    const already = await FlowAsset.findOne({ key: v2Key });
+    if (already) continue;
+    const source = await FlowAsset.findOne({ key: v1Key });
+    if (!source?.url) continue;
+    await FlowAsset.create({
+      key: v2Key,
+      label: humanize(v2Key.replace(/^icon_/, '')),
+      type: 'image',
+      group: 'Requirement Icons',
+      url: source.url,
+      // Deliberately no publicId: this row shares the V1 file, so deleting
+      // the alias must not delete the original from Cloudinary.
+      publicId: '',
+      aspectRatio: '1:1',
+      mimeType: source.mimeType,
+      fileSize: source.fileSize,
+    });
+    aliased++;
+    console.log(`  aliased  ${v2Key.padEnd(20)} <- ${v1Key}`);
+  }
+
   const total = await FlowAsset.countDocuments();
-  console.log(`\nDone. created=${created} updated=${updated} · flowassets total=${total}`);
+  console.log(`\nDone. created=${created} updated=${updated} aliased=${aliased} · flowassets total=${total}`);
   await mongoose.disconnect();
 };
 

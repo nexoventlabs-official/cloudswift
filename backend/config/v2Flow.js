@@ -52,6 +52,9 @@ export const V2_CONFIG = {
     listButton: 'Choose what you need',
     sectionTitle: 'What do you need help with?',
     headerKey: 'welcome_header',
+    // Shown inside the Flow screen (above the options).
+    heading: 'How can we help?',
+    subheading: 'What are you looking to solve?',
   },
 
   /**

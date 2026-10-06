@@ -47,62 +47,68 @@ function buildFlowJson() {
     description: String(r.description || '').slice(0, 300),
   }));
 
-  // 1x1 transparent PNG — only a schema example; the real banner is supplied
-  // at send time from the `welcome_banner` asset (8:1).
-  const EXAMPLE_PNG =
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-
+  // Everything shown on the screen is DYNAMIC (supplied at send time) so the
+  // options, their 1:1 icons and the 8:1 banner can change from the admin
+  // panel / config without re-publishing. Mirrors the proven V1 structure:
+  // a dynamic `data-source` whose items carry an `image` (base64).
   return {
-    version: '7.0',
+    version: '6.3',
+    routing_model: { CHOOSE_REQUIREMENT: [] },
     screens: [
       {
         id: 'CHOOSE_REQUIREMENT',
         title: 'How can we help?',
         terminal: true,
+        success: true,
         data: {
+          banner: { type: 'string', __example__: 'iVBORw0KGgo' },
           has_banner: { type: 'boolean', __example__: true },
-          banner: { type: 'string', __example__: EXAMPLE_PNG },
+          heading: { type: 'string', __example__: 'How can we help?' },
+          subheading: { type: 'string', __example__: 'What are you looking to solve?' },
+          requirements: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                title: { type: 'string' },
+                description: { type: 'string' },
+                // Per-option 1:1 icon, raw base64.
+                image: { type: 'string' },
+              },
+              required: ['id', 'title'],
+            },
+            __example__: dataSource.slice(0, 2).map((d) => ({ ...d, image: 'iVBORw0KGgo' })),
+          },
         },
         layout: {
           type: 'SingleColumnLayout',
           children: [
-            // 8:1 brand banner, rendered only when one has been uploaded.
             {
-              type: 'If',
-              condition: '${data.has_banner}',
-              then: [
-                {
-                  type: 'Image',
-                  src: '${data.banner}',
-                  height: 60,
-                  'scale-type': 'cover',
-                },
-              ],
+              type: 'Image',
+              src: '${data.banner}',
+              width: 1000,
+              height: 125,
+              'scale-type': 'cover',
+              'alt-text': 'CloudSwift',
+              visible: '${data.has_banner}',
+            },
+            { type: 'TextHeading', text: '${data.heading}' },
+            { type: 'TextSubheading', text: '${data.subheading}' },
+            {
+              type: 'RadioButtonsGroup',
+              name: 'requirement',
+              label: 'Select one',
+              required: true,
+              'data-source': '${data.requirements}',
             },
             {
-              type: 'TextSubheading',
-              text: 'What are you looking to solve?',
-            },
-            {
-              type: 'Form',
-              name: 'form',
-              children: [
-                {
-                  type: 'RadioButtonsGroup',
-                  name: 'requirement',
-                  label: 'Select one',
-                  required: true,
-                  'data-source': dataSource,
-                },
-                {
-                  type: 'Footer',
-                  label: 'Continue',
-                  'on-click-action': {
-                    name: 'complete',
-                    payload: { requirement: '${form.requirement}' },
-                  },
-                },
-              ],
+              type: 'Footer',
+              label: 'Continue',
+              'on-click-action': {
+                name: 'complete',
+                payload: { requirement: '${form.requirement}' },
+              },
             },
           ],
         },
@@ -139,9 +145,8 @@ async function publish(flowId) {
 
 const run = async () => {
   const flowJson = buildFlowJson();
-  const form = flowJson.screens[0].layout.children.find((c) => c.type === 'Form');
-  const radio = form?.children?.find((c) => c.type === 'RadioButtonsGroup');
-  console.log(`Requirements in flow: ${radio?.['data-source']?.length ?? 0}`);
+  console.log(`Options supplied at send time (dynamic data-source): ${V2_CONFIG.requirements.length}`);
+  console.log('Per-option 1:1 icons + 8:1 banner are passed in as base64 at send time.');
 
   let flow = await findExisting();
   let flowId;
