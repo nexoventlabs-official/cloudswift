@@ -73,6 +73,7 @@ export const V2_CONFIG = {
   a1: {
     // {{requirement_label}} is substituted at send time.
     bodyTemplate: '{{requirement_label}} — understood. I need a few quick details to route this correctly.',
+    headerKey: 'a1_header',
     buttons: [
       { id: 'continue',        title: 'Continue' },
       { id: 'talk_specialist', title: 'Talk to specialist' },

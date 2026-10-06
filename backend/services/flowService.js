@@ -1,17 +1,13 @@
 /**
- * Builds and sends the A0 service-picker WhatsApp Flow.
- * - The message HEADER image is a hosted Cloudinary URL (welcome_header).
- * - The banner shown INSIDE the flow screen must be raw base64 (Flows block remote URLs),
- *   so we fetch the welcome_banner asset and encode it at send time.
+ * Builds and sends the V2 native WhatsApp Flows.
+ * - Message HEADER images are hosted Cloudinary URLs (looked up from FlowAsset).
+ * - Images shown INSIDE a Flow screen must be raw base64 (Flows block remote
+ *   URLs), so assets are fetched and encoded at send time.
  */
 import axios from 'axios';
 import FlowAsset from '../models/FlowAsset.js';
-import Setting from '../models/Setting.js';
 import { sendFlow } from './metaCloud.js';
-import { SERVICES, WELCOME_BODY } from './flowMessages.js';
 import logger from './logger.js';
-
-const FLOW_SCREEN = 'CHOOSE_SERVICE';
 
 async function assetUrl(key) {
   try {
@@ -19,15 +15,6 @@ async function assetUrl(key) {
     return a?.url || '';
   } catch {
     return '';
-  }
-}
-
-async function settingVal(key, fallback = '') {
-  try {
-    const s = await Setting.findOne({ key });
-    return s?.value || fallback;
-  } catch {
-    return fallback;
   }
 }
 
@@ -59,74 +46,6 @@ export async function urlToBase64(url, opts = {}) {
   }
 }
 
-const kb = (b64) => Math.round((b64.length * 0.75) / 1024);
-
-/**
- * Send the service-picker flow to a contact.
- * Falls back gracefully if the flow id or assets are missing.
- * Returns true if a flow message was sent, false otherwise.
- */
-export async function sendServiceFlow(phone, name = '') {
-  const flowId = process.env.WA_LEAD_FLOW_ID;
-  if (!flowId) {
-    logger.warn('WA_LEAD_FLOW_ID not set — cannot send service flow');
-    return false;
-  }
-
-  const headerUrl  = await assetUrl('welcome_header');
-  const bannerUrl  = await assetUrl('welcome_banner');
-  // Banner: 8:1 (1920×240), high quality — up to ~140 KB budget
-  const bannerB64  = bannerUrl
-    ? await urlToBase64(bannerUrl, { width: 1920, height: 240, crop: 'fill', quality: 92, format: 'jpg' })
-    : '';
-
-  const heading    = await settingVal('flowHeading', 'Welcome to CloudSwift ☁️');
-  const subheading = await settingVal('flowSubheading', 'Select a service to get started:');
-
-  // Per-service 1:1 logos (180×180, ~20 KB each). PNG keeps logo transparency crisp.
-  const services = [];
-  for (const s of SERVICES) {
-    const item = { id: s.id, title: s.title, description: s.description };
-    if (s.iconKey) {
-      const iconUrl = await assetUrl(s.iconKey);
-      if (iconUrl) {
-        const icon = await urlToBase64(iconUrl, { width: 180, height: 180, crop: 'fill', quality: 90, format: 'png' });
-        if (icon) item.image = icon;
-      }
-    }
-    services.push(item);
-  }
-
-  // Guard the ~240 KB flow payload cap: if banner + icons are too big, drop icons.
-  let totalKb = kb(bannerB64) + services.reduce((a, s) => a + (s.image ? kb(s.image) : 0), 0);
-  if (totalKb > 220) {
-    services.forEach((s) => delete s.image);
-    logger.warn('Service flow payload over budget — dropped row icons', { totalKb });
-    totalKb = kb(bannerB64);
-  }
-  logger.info('Service flow assets', { bannerKb: kb(bannerB64), iconCount: services.filter((s) => s.image).length, totalKb });
-
-  const data = {
-    heading,
-    subheading,
-    has_banner: Boolean(bannerB64),
-    banner: bannerB64 || '',
-    services,
-  };
-
-  await sendFlow(phone, {
-    flowId,
-    flowToken: `cloudswift_${phone}`,
-    cta: 'Choose service',
-    screen: FLOW_SCREEN,
-    data,
-    headerImageUrl: headerUrl || '',
-    body: WELCOME_BODY(name),
-    footer: 'CloudSwift',
-  });
-  return true;
-}
-
 /**
  * V2 — send the Requirement Picker as a native WhatsApp Flow.
  *
@@ -147,12 +66,22 @@ export async function sendRequirementFlow(phone, name = '', cfg = null) {
   const body = cfg?.welcome?.body
     || "Hi 👋 Welcome to CloudSwift.\n\nTell us what you're looking to solve and we'll point you to the right cloud specialist.";
 
+  // In-flow 8:1 banner. Flows block remote URLs, so it must be raw base64 —
+  // downscaled via Cloudinary first to stay well under the payload cap.
+  const bannerUrl = await assetUrl('welcome_banner');
+  const bannerB64 = bannerUrl
+    ? await urlToBase64(bannerUrl, { width: 1920, height: 240, crop: 'fill', quality: 88, format: 'jpg' })
+    : '';
+
   await sendFlow(phone, {
     flowId,
     flowToken: `cloudswift_req_${phone}`,
     cta: (cfg?.welcome?.listButton || 'Choose what you need').slice(0, 20),
     screen: 'CHOOSE_REQUIREMENT',
-    data: {},
+    data: {
+      has_banner: Boolean(bannerB64),
+      banner: bannerB64 || '',
+    },
     headerImageUrl: headerUrl || '',
     body: name ? body.replace('Hi 👋', `Hi ${name} 👋`) : body,
     footer: 'CloudSwift',
@@ -203,31 +132,6 @@ export async function sendQualifyFlowV2(phone, cfg, requirement, name = '') {
 }
 
 /**
- * Send the multi-screen qualification flow (size → situation → timeline → role).
- * Self-contained (client-side navigate) — no data needed up front.
- * Returns true if sent, false if the flow id isn't configured.
- */
-export async function sendQualifyFlow(phone, name = '') {
-  const flowId = process.env.WA_QUALIFY_FLOW_ID;
-  if (!flowId) {
-    logger.warn('WA_QUALIFY_FLOW_ID not set — falling back to button questions');
-    return false;
-  }
-  const headerUrl = await assetUrl('qualify_header');
-  await sendFlow(phone, {
-    flowId,
-    flowToken: `cloudswift_q_${phone}`,
-    cta: 'Answer questions',
-    screen: 'SIZE',
-    data: {},
-    headerImageUrl: headerUrl || '',
-    body: `Thanks${name ? ` ${name}` : ''} — just 4 quick questions so we can match you with the right specialist. Tap below 👇`,
-    footer: 'CloudSwift',
-  });
-  return true;
-}
-
-/**
  * Send the contact-details form flow (name, company, email).
  * Uses the hot_lead_header asset as the message header if available.
  * Returns true if sent, false if the flow id isn't configured.
@@ -252,27 +156,7 @@ export async function sendContactFlow(phone, name = '', cfg = null) {
   return true;
 }
 
-/**
- * Send the booking form flow (name, business, WhatsApp number [locked], phone, email).
- * The contact's WhatsApp number is passed in and shown non-editable.
- * Returns true if sent, false if the flow id isn't configured.
- */
-export async function sendBookingFlow(phone, name = '') {
-  const flowId = process.env.WA_BOOKING_FLOW_ID;
-  if (!flowId) {
-    logger.warn('WA_BOOKING_FLOW_ID not set — cannot send booking form');
-    return false;
-  }
-  const headerUrl = await assetUrl('calendly_header');
-  await sendFlow(phone, {
-    flowId,
-    flowToken: `cloudswift_b_${phone}`,
-    cta: 'Book a call',
-    screen: 'BOOK',
-    data: { wa_number: phone },
-    headerImageUrl: headerUrl || '',
-    body: `Great${name ? ` ${name}` : ''} — let's get your call booked. Tap below to share your details.`,
-    footer: 'CloudSwift',
-  });
-  return true;
-}
+// NOTE: the V1 senders (service picker, V1 qualification, booking form) were
+// removed with V2. The requirement picker and qualification are now the V2
+// Flows above, and booking collects only a slot in chat so identity details
+// are never re-requested.

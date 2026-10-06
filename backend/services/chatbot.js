@@ -295,10 +295,14 @@ async function handleRequirementReply(lead, conv, cfg, selectedId, text) {
   await logEvent(lead, 'requirement_selected', 'requirement_sent', { requirement: chosen.id });
 
   const body = fill(cfg.a1.bodyTemplate, { requirement_label: chosen.label });
-  const img = await assetUrl(cfg.welcome.headerKey);
+  // Prefer a requirement-specific icon, then the A1 header, then the welcome header.
+  const headerKey = (await assetUrl(`icon_${chosen.id}`))
+    ? `icon_${chosen.id}`
+    : (await assetUrl(cfg.a1.headerKey)) ? cfg.a1.headerKey : cfg.welcome.headerKey;
+  const img = await assetUrl(headerKey);
   await sendButtons(lead.phone, body, cfg.a1.buttons, img || '');
   await logOutbound(conv, lead.phone, body, {
-    kind: 'buttons', headerKey: img ? cfg.welcome.headerKey : undefined, buttons: titles(cfg.a1.buttons),
+    kind: 'buttons', headerKey: img ? headerKey : undefined, buttons: titles(cfg.a1.buttons),
   });
 }
 

@@ -7,32 +7,59 @@ import s from "../panel.module.css";
 type Field = { key: string; label: string; type: "image" | "link"; aspectRatio?: string };
 type Asset = { key: string; url?: string; type: string };
 
-const GROUPS: { group: string; items: Field[] }[] = [
+type Group = { group: string; note?: string; items: Field[] };
+
+const GROUPS: Group[] = [
   {
-    group: "Service Picker Flow",
+    group: "Requirement Picker Flow (V2)",
+    note: "Flow 4577730929132224 — the first screen. The 8:1 banner renders inside the Flow; the message header sits above it in the chat.",
     items: [
-      { key: "welcome_header", label: "Service Picker — message header", type: "image", aspectRatio: "original" },
-      { key: "welcome_banner", label: "Service Picker — in-flow banner (8:1)", type: "image", aspectRatio: "8:1" },
-      { key: "icon_azure", label: "Azure — row icon (1:1)", type: "image", aspectRatio: "1:1" },
-      { key: "icon_m365", label: "Microsoft 365 — row icon (1:1)", type: "image", aspectRatio: "1:1" },
-      { key: "icon_managed", label: "Managed cloud — row icon (1:1)", type: "image", aspectRatio: "1:1" },
-      { key: "icon_security", label: "Security — row icon (1:1)", type: "image", aspectRatio: "1:1" },
+      { key: "welcome_header", label: "Requirement Picker — message header", type: "image", aspectRatio: "original" },
+      { key: "welcome_banner", label: "Requirement Picker — in-flow banner (8:1)", type: "image", aspectRatio: "8:1" },
+    ],
+  },
+  {
+    group: "Requirement Icons (1:1)",
+    note: "One per requirement option. Used for message headers and in-flow artwork per requirement — upload square images.",
+    items: [
+      { key: "icon_migration",     label: "Cloud Migration (1:1)",      type: "image", aspectRatio: "1:1" },
+      { key: "icon_managed_cloud", label: "Managed Cloud (1:1)",        type: "image", aspectRatio: "1:1" },
+      { key: "icon_finops",        label: "Cloud Cost / FinOps (1:1)",  type: "image", aspectRatio: "1:1" },
+      { key: "icon_security",      label: "Security / Compliance (1:1)",type: "image", aspectRatio: "1:1" },
+      { key: "icon_m365",          label: "Microsoft 365 (1:1)",        type: "image", aspectRatio: "1:1" },
+      { key: "icon_ai",            label: "AI / Automation (1:1)",      type: "image", aspectRatio: "1:1" },
+      { key: "icon_other",         label: "Something else (1:1)",       type: "image", aspectRatio: "1:1" },
+    ],
+  },
+  {
+    group: "Qualification Flow (V2)",
+    note: "Flow 4992071007786916 — Q1→Q2→Q3→Q4 in one form. Q4's question changes with the selected requirement.",
+    items: [
+      { key: "qualify_header", label: "Qualification — message header", type: "image", aspectRatio: "original" },
     ],
   },
   {
     group: "Message Headers",
+    note: "Header images on the journey's chat messages.",
     items: [
-      { key: "a1_header", label: "Questions intro header", type: "image", aspectRatio: "original" },
-      { key: "qualify_header", label: "4-question form header", type: "image", aspectRatio: "original" },
-      { key: "hot_lead_header", label: "Hot lead — contact form header", type: "image", aspectRatio: "original" },
-      { key: "h2_header", label: "Book / Callback / Chat header", type: "image", aspectRatio: "original" },
-      { key: "calendly_header", label: "Book a call header", type: "image", aspectRatio: "original" },
-      { key: "nurture_header", label: "Warm — checklist header", type: "image", aspectRatio: "original" },
-      { key: "n1_header", label: "Warm — resources header", type: "image", aspectRatio: "original" },
-      { key: "thank_you_header", label: "Cold — guide header", type: "image", aspectRatio: "original" },
-      { key: "x1_header", label: "“Didn’t catch that” header", type: "image", aspectRatio: "original" },
-      { key: "resume_header", label: "Resume nudge header", type: "image", aspectRatio: "original" },
-      { key: "general_header", label: "Follow-up message header", type: "image", aspectRatio: "original" },
+      { key: "a1_header", label: "Requirement confirmed — Continue / Talk to specialist", type: "image", aspectRatio: "original" },
+      { key: "hot_lead_header", label: "High Priority — contact details", type: "image", aspectRatio: "original" },
+      { key: "h2_header", label: "High Priority — Book / Callback / Chat", type: "image", aspectRatio: "original" },
+      { key: "nurture_header", label: "Nurture — checklist / resource", type: "image", aspectRatio: "original" },
+      { key: "thank_you_header", label: "Self-Serve — guide", type: "image", aspectRatio: "original" },
+      { key: "x1_header", label: "“Didn’t catch that” prompt", type: "image", aspectRatio: "original" },
+      { key: "resume_header", label: "Drop-off resume nudge", type: "image", aspectRatio: "original" },
+    ],
+  },
+  {
+    group: "Legacy / unused",
+    note: "From the V1 flow — no longer sent by the V2 journey. Safe to delete.",
+    items: [
+      { key: "calendly_header", label: "V1 — Calendly / book a call", type: "image", aspectRatio: "original" },
+      { key: "n1_header", label: "V1 — nurture resources", type: "image", aspectRatio: "original" },
+      { key: "general_header", label: "V1 — follow-up message", type: "image", aspectRatio: "original" },
+      { key: "icon_azure", label: "V1 — Azure row icon", type: "image", aspectRatio: "1:1" },
+      { key: "icon_managed", label: "V1 — Managed cloud row icon", type: "image", aspectRatio: "1:1" },
     ],
   },
 ];
@@ -86,6 +113,11 @@ export default function FlowImagesPage() {
       {!loading && GROUPS.map((g) => (
         <div key={g.group}>
           <div className={s.grpTitle}>{g.group}</div>
+          {g.note && (
+            <div className={s.muted} style={{ fontSize: "0.78rem", margin: "-6px 0 12px", maxWidth: 760, lineHeight: 1.5 }}>
+              {g.note}
+            </div>
+          )}
           <div className={s.assetGrid}>
             {g.items.map((f) => {
               const cur = assets[f.key];

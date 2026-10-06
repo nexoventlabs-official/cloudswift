@@ -47,6 +47,11 @@ function buildFlowJson() {
     description: String(r.description || '').slice(0, 300),
   }));
 
+  // 1x1 transparent PNG — only a schema example; the real banner is supplied
+  // at send time from the `welcome_banner` asset (8:1).
+  const EXAMPLE_PNG =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
   return {
     version: '7.0',
     screens: [
@@ -54,10 +59,26 @@ function buildFlowJson() {
         id: 'CHOOSE_REQUIREMENT',
         title: 'How can we help?',
         terminal: true,
-        data: {},
+        data: {
+          has_banner: { type: 'boolean', __example__: true },
+          banner: { type: 'string', __example__: EXAMPLE_PNG },
+        },
         layout: {
           type: 'SingleColumnLayout',
           children: [
+            // 8:1 brand banner, rendered only when one has been uploaded.
+            {
+              type: 'If',
+              condition: '${data.has_banner}',
+              then: [
+                {
+                  type: 'Image',
+                  src: '${data.banner}',
+                  height: 60,
+                  'scale-type': 'cover',
+                },
+              ],
+            },
             {
               type: 'TextSubheading',
               text: 'What are you looking to solve?',
@@ -118,7 +139,9 @@ async function publish(flowId) {
 
 const run = async () => {
   const flowJson = buildFlowJson();
-  console.log(`Requirements in flow: ${flowJson.screens[0].layout.children[1].children[0]['data-source'].length}`);
+  const form = flowJson.screens[0].layout.children.find((c) => c.type === 'Form');
+  const radio = form?.children?.find((c) => c.type === 'RadioButtonsGroup');
+  console.log(`Requirements in flow: ${radio?.['data-source']?.length ?? 0}`);
 
   let flow = await findExisting();
   let flowId;
