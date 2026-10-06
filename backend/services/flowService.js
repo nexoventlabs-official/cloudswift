@@ -159,6 +159,48 @@ export async function sendRequirementFlow(phone, name = '', cfg = null) {
 }
 
 /**
+ * V2 — send the Qualification Flow (Q1 → Q2 → Q3 → Q4 inside one native Flow).
+ *
+ * Q4 is dynamic: its label and options are supplied here from
+ * config → qualification.Q4.branches[requirement], so a single published Flow
+ * serves every requirement and changing a Q4 question needs no re-publish.
+ *
+ * Returns true if sent; false lets the caller fall back to list messages.
+ */
+export async function sendQualifyFlowV2(phone, cfg, requirement, name = '') {
+  const flowId = process.env.WA_QUALIFY_FLOW_V2_ID;
+  if (!flowId) return false;
+
+  const branches = cfg?.qualification?.Q4?.branches || {};
+  const branch = branches[requirement] || branches.other;
+  if (!branch) return false;
+
+  // `flowOptions` exists for branches whose fallback is free text (e.g. "other"),
+  // because a Flow radio group needs concrete options.
+  const options = branch.flowOptions || branch.options || [];
+  if (!options.length) return false;
+
+  const headerUrl = await assetUrl('qualify_header');
+  await sendFlow(phone, {
+    flowId,
+    flowToken: `cloudswift_q2_${phone}`,
+    cta: 'Answer questions',
+    screen: 'TRIGGER',
+    data: {
+      q4_label: String(branch.prompt || 'Tell us a bit more'),
+      q4_options: options.map((o) => ({
+        id: o.id,
+        title: String(o.title || o.label).slice(0, 30),
+      })),
+    },
+    headerImageUrl: headerUrl || '',
+    body: `Thanks${name ? ` ${name}` : ''} — ${cfg?.qualification?.intro || 'a few quick details will help us route this correctly.'}`,
+    footer: 'CloudSwift',
+  });
+  return true;
+}
+
+/**
  * Send the multi-screen qualification flow (size → situation → timeline → role).
  * Self-contained (client-side navigate) — no data needed up front.
  * Returns true if sent, false if the flow id isn't configured.

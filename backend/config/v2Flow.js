@@ -181,8 +181,18 @@ export const V2_CONFIG = {
           ],
         },
         other: {
-          prompt: 'Briefly tell us what you need.',
+          prompt: 'Which area does this relate to?',
+          // The list/text fallback asks for free text; inside the native Flow a
+          // radio group is required, so these generic buckets are used there and
+          // the Flow's optional notes field captures the detail.
           type: 'short-text',
+          flowOptions: [
+            { id: 'infrastructure', title: 'Infrastructure',  label: 'Infrastructure',            fit: 'medium' },
+            { id: 'applications',   title: 'Applications',    label: 'Applications',              fit: 'medium' },
+            { id: 'data',           title: 'Data / analytics',label: 'Data / analytics',          fit: 'medium' },
+            { id: 'advisory',       title: 'Advisory',        label: 'Advisory / consulting',     fit: 'low' },
+            { id: 'not_sure',       title: 'Not sure',        label: 'Not sure',                  fit: 'low' },
+          ],
         },
       },
     },

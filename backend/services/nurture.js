@@ -24,7 +24,7 @@ import logger from './logger.js';
 const AWAITING_STEPS = [
   // V2
   'requirement_sent', 'a1_sent_v2',
-  'qualify_q1', 'qualify_q2', 'qualify_q3', 'qualify_q4', 'qualify_q4_text',
+  'qualify_flow_sent', 'qualify_q1', 'qualify_q2', 'qualify_q3', 'qualify_q4', 'qualify_q4_text',
   'awaiting_full_name', 'awaiting_company', 'awaiting_email', 'contact_flow_sent',
   'high_priority_options', 'awaiting_booking_slot', 'awaiting_callback_time',
   'nurture_consent_sent', 'self_serve_sent',

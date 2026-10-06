@@ -40,7 +40,7 @@ import { logEvent } from './funnel.js';
 import { emitLead, emitLeadUpdate, emitMessage } from './eventBus.js';
 import logger from './logger.js';
 import { sendText, sendButtons, sendList, sendImage, markRead } from './metaCloud.js';
-import { sendContactFlow, sendRequirementFlow } from './flowService.js';
+import { sendContactFlow, sendRequirementFlow, sendQualifyFlowV2 } from './flowService.js';
 
 // ── Question plumbing ────────────────────────────────────────────────────────
 const Q_ORDER = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -199,6 +199,10 @@ export async function handleMessage(msg) {
     if (flowResponse.requirement) {
       return handleRequirementReply(lead, conv, cfg, String(flowResponse.requirement), null);
     }
+    // V2 Qualification Flow — all four answers arrive together.
+    if (flowResponse.trigger || flowResponse.timeline || flowResponse.role || flowResponse.context) {
+      return handleQualifyFlowSubmission(lead, conv, cfg, flowResponse);
+    }
     if (flowResponse.full_name || flowResponse.company || flowResponse.email) {
       return handleContactSubmission(lead, conv, cfg, flowResponse);
     }
@@ -222,6 +226,9 @@ export async function handleMessage(msg) {
     case 'qualify_q3':
     case 'qualify_q4':             return handleAnswer(lead, conv, cfg, STEP_Q[lead.flowStep], selectedId, text);
     case 'qualify_q4_text':        return handleQ4Text(lead, conv, cfg, text);
+    // Waiting on the native Qualification Flow — a stray text here means the
+    // contact typed instead of opening the form, so re-offer it.
+    case 'qualify_flow_sent':      return handleInvalid(lead, conv, cfg);
     case 'awaiting_full_name':
     case 'awaiting_company':
     case 'awaiting_email':         return handleContactAnswer(lead, conv, cfg, STEP_CONTACT[lead.flowStep], text);
@@ -306,7 +313,63 @@ async function startQualification(lead, conv, cfg) {
   lead.invalidCount = 0;
   await lead.save();
   await logEvent(lead, 'qualification_started', 'qualify_q1');
+
+  // Preferred path: ask Q1–Q4 inside one native Flow. Q4's label/options are
+  // passed in, so the contextual question matches the chosen requirement.
+  let sentFlow = false;
+  try { sentFlow = await sendQualifyFlowV2(lead.phone, cfg, lead.requirement, lead.name || lead.profileName); }
+  catch (e) { logger.warn('Qualify flow send failed, using list questions', { error: e.message }); }
+
+  if (sentFlow) {
+    lead.flowStep = 'qualify_flow_sent';
+    lead.contextQuestionId = `Q4:${lead.requirement}`;
+    setAwaiting(lead, cfg);
+    await lead.save();
+    return logOutbound(conv, lead.phone, cfg.qualification.intro, {
+      kind: 'flow', headerKey: 'qualify_header', flowCta: 'Answer questions',
+    });
+  }
+
+  // Fallback: one list message per question.
   return sendQuestion(lead, conv, cfg, 'Q1');
+}
+
+/**
+ * The native Qualification Flow returns every answer in one submission.
+ * Unknown/absent values simply fall through to the assessment, which handles
+ * partial data gracefully.
+ */
+async function handleQualifyFlowSubmission(lead, conv, cfg, resp) {
+  const q = cfg.qualification;
+  const take = (options, value) => (findOption(options, value) ? value : '');
+
+  lead.trigger  = take(q.Q1.options, resp.trigger)  || lead.trigger;
+  lead.timeline = take(q.Q2.options, resp.timeline) || lead.timeline;
+  lead.role     = take(q.Q3.options, resp.role)     || lead.role;
+
+  const branch = q4Branch(cfg, lead.requirement);
+  const q4Options = branch?.flowOptions || branch?.options || [];
+  const ctx = findOption(q4Options, resp.context);
+  if (ctx) {
+    lead.contextAnswer = ctx.id;
+    lead.contextAnswerLabel = ctx.label || ctx.title || ctx.id;
+  } else if (resp.context) {
+    lead.contextAnswer = '';
+    lead.contextAnswerLabel = String(resp.context).slice(0, 300);
+  }
+
+  lead.invalidCount = 0;
+  await lead.save();
+
+  // The optional free-text notes field is stored verbatim like any free text.
+  const notes = String(resp.notes || '').trim();
+  if (notes) {
+    await recordFreeText(lead, notes, 'qualify_flow_notes', {
+      matched: true, confidence: 1, accepted: true, field: 'notes',
+    });
+  }
+
+  return runAssessment(lead, conv, cfg);
 }
 
 async function sendQuestion(lead, conv, cfg, qid) {
@@ -803,6 +866,7 @@ async function resendStep(lead, conv, cfg) {
       await sendButtons(lead.phone, body, cfg.a1.buttons);
       return logOutbound(conv, lead.phone, body, { kind: 'buttons', buttons: titles(cfg.a1.buttons) });
     }
+    case 'qualify_flow_sent':      return startQualification(lead, conv, cfg);
     case 'qualify_q1':             return sendQuestion(lead, conv, cfg, 'Q1');
     case 'qualify_q2':             return sendQuestion(lead, conv, cfg, 'Q2');
     case 'qualify_q3':             return sendQuestion(lead, conv, cfg, 'Q3');

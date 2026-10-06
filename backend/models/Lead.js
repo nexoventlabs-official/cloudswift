@@ -105,6 +105,7 @@ const LeadSchema = new mongoose.Schema(
         'qualify_q3',             // Q3 role asked
         'qualify_q4',             // Q4 contextual (list) asked
         'qualify_q4_text',        // Q4 contextual (short text) asked
+        'qualify_flow_sent',      // Native multi-screen qualification Flow sent
         'assessed',               // Fit/Intent/Urgency computed, route set
         'awaiting_full_name',     // Contact capture — only missing fields
         'awaiting_company',
