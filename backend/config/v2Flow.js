@@ -39,9 +39,9 @@ export const V2_CONFIG = {
    * list-message fallback.
    */
   flows: {
-    requirementFlowId: process.env.WA_REQUIREMENT_FLOW_ID || '4577730929132224',
-    qualifyFlowId:     process.env.WA_QUALIFY_FLOW_V2_ID  || '4992071007786916',
-    contactFlowId:     process.env.WA_CONTACT_FLOW_ID     || '1182014624148414',
+    requirementFlowId: process.env.WA_REQUIREMENT_FLOW_ID || '1550455230171239',
+    qualifyFlowId:     process.env.WA_QUALIFY_FLOW_V2_ID  || '1636352214768242',
+    contactFlowId:     process.env.WA_CONTACT_FLOW_ID     || '1083750814579094',
   },
 
   // ── A0 · Entry / requirement picker ───────────────────────────────────────
